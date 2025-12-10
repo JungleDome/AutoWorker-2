@@ -5,7 +5,7 @@ import type {
   AgentRole,
   PlanPayload,
   RequirementsPayload,
-} from "../payloadTypes.js";
+} from "../models/domainTypes.js";
 import { recordPlan } from "../storage.js";
 
 const PLANNER_ROLE: AgentRole = "Planner (Tech Lead)";

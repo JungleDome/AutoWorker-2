@@ -6,7 +6,7 @@ import type {
   ExecutionResultPayload,
   PlanPayload,
   QaReportPayload,
-} from "../payloadTypes.js";
+} from "../models/domainTypes.js";
 import { recordQaReport } from "../storage.js";
 
 const QA_ROLE: AgentRole = "QA Specialist (QA Engineer)";

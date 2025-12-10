@@ -18,7 +18,7 @@ import type {
   PlanPayload,
   QaReportPayload,
   RequirementsPayload,
-} from "../payloadTypes.js";
+} from "../models/domainTypes.js";
 import {
   registry,
   z,
@@ -29,7 +29,7 @@ import {
   AgentOutputEnvelopeQaReportSchema,
   ErrorResponseSchema,
   PlanPayloadSchema,
-} from "./openapi.js";
+} from "./openapiRegistry.js";
 
 const RequirementsBodySchema = z.object({
   raw_description: z.string(),

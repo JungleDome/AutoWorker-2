@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import swaggerUi from "swagger-ui-express";
-import { generateOpenApiDocument } from "./openapi.js";
+import { generateOpenApiDocument } from "./openapiRegistry.js";
 import { registerRoutes } from "./routes.js";
 
 export function createApp() {

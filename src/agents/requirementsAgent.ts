@@ -4,7 +4,7 @@ import type {
   AgentOutputEnvelope,
   AgentRole,
   RequirementsPayload,
-} from "../payloadTypes.js";
+} from "../models/domainTypes.js";
 import { recordRequirements } from "../storage.js";
 
 const REQUIREMENTS_ROLE: AgentRole = "Request Owner (Product Manager)";

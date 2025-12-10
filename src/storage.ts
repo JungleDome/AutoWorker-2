@@ -1,28 +1,12 @@
 import { randomUUID } from "node:crypto";
-import {
+import type {
   AgentOutputEnvelope,
   ExecutionResultPayload,
   PlanPayload,
   QaReportPayload,
   RequirementsPayload,
-} from "./payloadTypes.js";
-
-export interface TicketRecord {
-  ticketId: string;
-  createdAt: string;
-  updatedAt: string;
-  latestRequirements?: AgentOutputEnvelope<RequirementsPayload>;
-  latestPlan?: AgentOutputEnvelope<PlanPayload>;
-  planHistory: AgentOutputEnvelope<PlanPayload>[];
-  executionResults: AgentOutputEnvelope<ExecutionResultPayload>[];
-  qaReports: AgentOutputEnvelope<QaReportPayload>[];
-  feedback: {
-    requirements: string[];
-    plan: string[];
-    execution: string[];
-    qa: string[];
-  };
-}
+  TicketRecord,
+} from "./models/domainTypes.js";
 
 export interface AgentRunRecord {
   id: string;

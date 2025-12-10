@@ -6,7 +6,7 @@ import type {
   ExecutionResultPayload,
   PlanPayload,
   PlanStep,
-} from "../payloadTypes.js";
+} from "../models/domainTypes.js";
 import { recordExecutionResult } from "../storage.js";
 
 const IMPLEMENTER_ROLE: AgentRole = "Implementer (Software Engineer)";
