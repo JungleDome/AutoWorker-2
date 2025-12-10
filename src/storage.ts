@@ -16,6 +16,12 @@ export interface TicketRecord {
   planHistory: AgentOutputEnvelope<PlanPayload>[];
   executionResults: AgentOutputEnvelope<ExecutionResultPayload>[];
   qaReports: AgentOutputEnvelope<QaReportPayload>[];
+  feedback: {
+    requirements: string[];
+    plan: string[];
+    execution: string[];
+    qa: string[];
+  };
 }
 
 export interface AgentRunRecord {
@@ -50,6 +56,12 @@ export function upsertTicket(ticketId: string): TicketRecord {
     planHistory: [],
     executionResults: [],
     qaReports: [],
+    feedback: {
+      requirements: [],
+      plan: [],
+      execution: [],
+      qa: [],
+    },
   };
   tickets.set(ticketId, created);
   return created;
@@ -128,4 +140,3 @@ function persistRun(
   };
   runs.set(id, record);
 }
-

@@ -1,6 +1,8 @@
 import express, { type Request, type Response } from "express";
 import cors from "cors";
 import { config } from "./config.js";
+import swaggerUi from "swagger-ui-express";
+import { openApiSpec } from "./openapi.js";
 import {
   getTicket,
   listTickets,
@@ -26,6 +28,18 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+app.use(
+  "/docs",
+  swaggerUi.serve,
+  swaggerUi.setup(openApiSpec, {
+    customSiteTitle: "AutoWorker API Docs",
+  }),
+);
+
+app.get("/openapi.json", (_req: Request, res: Response) => {
+  res.json(openApiSpec);
+});
 
 app.get("/health", (_req: Request, res: Response) => {
   res.json({ status: "ok" });
@@ -73,7 +87,10 @@ app.post(
       return;
     }
 
-    upsertTicket(ticketId);
+    const ticket = upsertTicket(ticketId);
+    if (typeof notes_for_agent === "string" && notes_for_agent.trim()) {
+      ticket.feedback.requirements.push(notes_for_agent.trim());
+    }
 
     try {
       const envelope = await runRequirementsForTicket({
@@ -145,6 +162,10 @@ app.post(
         .status(400)
         .json({ error: "Ticket must have requirements before planning" });
       return;
+    }
+
+    if (typeof notes_for_agent === "string" && notes_for_agent.trim()) {
+      ticket.feedback.plan.push(notes_for_agent.trim());
     }
 
     try {
@@ -219,6 +240,10 @@ app.post(
     const candidatePlans = ticket.planHistory.length
       ? ticket.planHistory
       : [ticket.latestPlan];
+
+    if (typeof notes_for_agent === "string" && notes_for_agent.trim()) {
+      ticket.feedback.execution.push(notes_for_agent.trim());
+    }
 
     const effectivePlanId =
       typeof plan_id === "string"
@@ -313,6 +338,10 @@ app.post("/api/tickets/:ticketId/qa", async (req: Request, res: Response) => {
   const candidatePlans = ticket.planHistory.length
     ? ticket.planHistory
     : [ticket.latestPlan];
+
+  if (typeof notes_for_agent === "string" && notes_for_agent.trim()) {
+    ticket.feedback.qa.push(notes_for_agent.trim());
+  }
 
   const effectivePlanId =
     typeof plan_id === "string"
