@@ -1,0 +1,1074 @@
+{
+    "AgentOutputEnvelope": {
+        "_meta": {
+            "description": "Standard wrapper that all role-specific payloads must use so the backend can route and audit agent outputs consistently."
+        },
+        "agent_role": {
+            "type": "string",
+            "required": true,
+            "allowed_values": [
+                "Request Owner (Product Manager)",
+                "Planner (Tech Lead)",
+                "Implementer (Software Engineer)",
+                "QA Specialist (QA Engineer)"
+            ],
+            "guidelines": "Use exactly one of the allowed_values that corresponds to the current agent's company-like role. Never invent new role names. This field tells the system who produced the payload.",
+            "examples": [
+                "Planner (Tech Lead)"
+            ]
+        },
+        "ticket_id": {
+            "type": "string",
+            "required": true,
+            "guidelines": "Copy the unique identifier of the ticket from the ticketing system. This must match the id used by other agents for the same piece of work. Do not invent arbitrary formats; follow the system convention such as T-123 or BUG-45.",
+            "examples": [
+                "T-123",
+                "BUG-45"
+            ]
+        },
+        "run_id": {
+            "type": "string",
+            "required": true,
+            "guidelines": "Generate a unique identifier for this single agent invocation. It must be unique per run so logs can be traced. You can include date or role information but the exact format is not important as long as it is unique.",
+            "examples": [
+                "run_2025-11-27T10-15-00Z_planner",
+                "run_00001234"
+            ]
+        },
+        "generated_at": {
+            "type": "string",
+            "required": true,
+            "guidelines": "Use an ISO 8601 timestamp in UTC for when this payload was generated. Always include date and time, for example 2025-11-27T10:15:00Z.",
+            "examples": [
+                "2025-11-27T10:15:00Z"
+            ]
+        },
+        "payload_type": {
+            "type": "string",
+            "required": true,
+            "allowed_values": [
+                "requirements",
+                "plan",
+                "execution_result",
+                "qa_report"
+            ],
+            "guidelines": "Choose the type that matches the payload being returned. Request Owner must use requirements, Planner must use plan, Implementer must use execution_result, QA Specialist must use qa_report. Never mix types.",
+            "examples": [
+                "plan"
+            ]
+        },
+        "payload": {
+            "type": "object",
+            "required": true,
+            "guidelines": "This must contain exactly one of the role-specific payload structures (RequirementsPayload, PlanPayload, ExecutionResultPayload, QaReportPayload) matching the payload_type."
+        }
+    },
+    "RequirementsPayload": {
+        "_meta": {
+            "description": "How the Request Owner (Product Manager) should fill in structured requirements derived from a raw ticket or request."
+        },
+        "ticket_id": {
+            "type": "string",
+            "required": true,
+            "guidelines": "Same value as AgentOutputEnvelope.ticket_id. Never change or reformat it.",
+            "examples": [
+                "T-123"
+            ]
+        },
+        "title": {
+            "type": "string",
+            "required": true,
+            "guidelines": "Short human readable summary of the work. It should be specific and action oriented, under 100 characters where possible. Avoid vague titles like 'Fix bug' and use concrete ones like 'Add email and password login'.",
+            "examples": [
+                "Add email and password login to web app"
+            ]
+        },
+        "source": {
+            "_meta": {
+                "description": "Information about where this request came from."
+            },
+            "raw_description": {
+                "type": "string",
+                "required": true,
+                "guidelines": "Copy or closely paraphrase the original text that described the problem or request. Preserve key details but you may remove noise or greetings. This is the unstructured source input.",
+                "examples": [
+                    "We need users to be able to log in with email and password instead of staying anonymous."
+                ]
+            },
+            "origin": {
+                "type": "string",
+                "required": true,
+                "allowed_values": [
+                    "user_report",
+                    "internal",
+                    "monitoring",
+                    "other"
+                ],
+                "guidelines": "Choose the category that best describes who or what reported this. Use user_report if an external or internal user described it. Use internal if it comes from internal planning or refactoring. Use monitoring if it was discovered by automated systems like error logs. Use other if none of these clearly fit.",
+                "examples": [
+                    "user_report"
+                ]
+            },
+            "reporter": {
+                "type": "string",
+                "required": false,
+                "guidelines": "If known, provide a simple identifier for the person or system that reported this, such as an email or internal username. Leave empty or omit if truly unknown.",
+                "examples": [
+                    "alice@example.com",
+                    "monitoring-service"
+                ]
+            }
+        },
+        "classification": {
+            "_meta": {
+                "description": "High level classification so the system and humans understand what kind of work this is and how urgent or risky it is."
+            },
+            "type": {
+                "type": "string",
+                "required": true,
+                "allowed_values": [
+                    "feature",
+                    "bugfix",
+                    "chore",
+                    "research"
+                ],
+                "guidelines": "Use feature when this adds new user visible capability or behaviour. Use bugfix when it corrects incorrect behaviour that should already work. Use chore for maintenance, refactoring, or non user visible updates like updating dependencies. Use research for tasks whose main output is knowledge, such as investigating feasibility or exploring options.",
+                "examples": [
+                    "feature"
+                ]
+            },
+            "domain": {
+                "type": "string",
+                "required": true,
+                "guidelines": "One or two words describing the product or technical area primarily affected. Examples include authentication, billing, search, frontend, backend, devops. If unsure, use the business capability such as authentication or payments instead of a low level implementation detail.",
+                "examples": [
+                    "authentication",
+                    "billing"
+                ]
+            },
+            "priority": {
+                "type": "string",
+                "required": true,
+                "allowed_values": [
+                    "low",
+                    "medium",
+                    "high",
+                    "critical"
+                ],
+                "guidelines": "Decide based on business urgency and user impact. Use low for nice to have improvements or purely internal optimizations without deadlines. Use medium for useful improvements or non blocking bugs that degrade but do not block normal usage. Use high for work that significantly impacts users or is needed soon for a release but does not fully block all usage. Use critical when the system is down, key flows are broken for many users, or there is a severe security or data loss risk.",
+                "examples": [
+                    "high"
+                ]
+            },
+            "risk_level": {
+                "type": "string",
+                "required": true,
+                "allowed_values": [
+                    "low",
+                    "medium",
+                    "high",
+                    "critical"
+                ],
+                "guidelines": "Decide based on technical uncertainty and potential negative impact if the work goes wrong. Use low when the change is simple, localized, and easy to roll back with minimal effect on users. Use medium when the change touches a few components or has some uncertainty but failures would not cause major outages or data issues. Use high when the change affects core flows, shared libraries, or security sensitive or performance critical paths where mistakes could cause outages or security issues. Use critical when mistakes could cause irreversible data loss, regulatory breach, or long lasting major outages.",
+                "examples": [
+                    "medium"
+                ]
+            }
+        },
+        "problem_statement": {
+            "type": "string",
+            "required": true,
+            "guidelines": "Describe the current state that is problematic in one or two clear sentences from the user's or system's perspective. Focus on what is wrong or missing, not the solution. Avoid technical details unless they are necessary to understand the problem.",
+            "examples": [
+                "Users cannot log in and must re-enter their details every time, which makes the app feel temporary and inconvenient."
+            ]
+        },
+        "goal_statement": {
+            "type": "string",
+            "required": true,
+            "guidelines": "Describe the desired future state in one or two clear sentences, again from the user's or system's perspective. It should be measurable or at least clearly checkable. Avoid prescribing implementation details.",
+            "examples": [
+                "Users can create accounts and log in using email and password so that their data and preferences are saved across sessions."
+            ]
+        },
+        "non_goals": {
+            "type": "array",
+            "items_type": "string",
+            "required": false,
+            "guidelines": "List things that could easily be assumed to be in scope but are intentionally out of scope for this ticket. Each item should be a short sentence. Use this to prevent scope creep and to clarify boundaries.",
+            "examples": [
+                [
+                    "Social logins like Google or Facebook are not part of this ticket.",
+                    "Password reset flows are intentionally out of scope here."
+                ]
+            ]
+        },
+        "context_summary": {
+            "type": "string",
+            "required": false,
+            "guidelines": "Summarize relevant background information that helps other agents understand the environment, such as tech stack, existing related features, or previous attempts. Keep it short and focused on information that influences design or implementation decisions.",
+            "examples": [
+                "The app is a React frontend with a Node.js backend and PostgreSQL database. There is an existing users table but no authentication logic yet."
+            ]
+        },
+        "constraints": {
+            "type": "array",
+            "items_type": "string",
+            "required": false,
+            "guidelines": "List any hard limits or rules that must be respected. These can be technical, business, or regulatory. Each item should express one clear constraint, such as must reuse X, must not store Y, or must support Z.",
+            "examples": [
+                [
+                    "Must use the existing UI design system components.",
+                    "Must not introduce new paid third party services.",
+                    "Must support mobile and desktop browsers."
+                ]
+            ]
+        },
+        "acceptance_criteria": {
+            "type": "array",
+            "items_type": "object",
+            "required": true,
+            "guidelines": "Define the specific conditions that must be true for this ticket to be considered done. Each entry should be testable and focused on user visible or behaviour oriented outcomes.",
+            "item_fields": {
+                "id": {
+                    "type": "string",
+                    "required": true,
+                    "guidelines": "Short stable identifier for this acceptance criterion, unique within the ticket. Use a simple prefix like AC1, AC2, AC3.",
+                    "examples": [
+                        "AC1"
+                    ]
+                },
+                "description": {
+                    "type": "string",
+                    "required": true,
+                    "guidelines": "Describe the criterion in detail in one sentence. It should be objectively checkable and relate directly to behaviour, not implementation internals.",
+                    "examples": [
+                        "User can sign up with email and password and see a confirmation that the account was created."
+                    ]
+                },
+                "must_have": {
+                    "type": "boolean",
+                    "required": true,
+                    "guidelines": "Set to true if this criterion is required for the ticket to be considered done. Set to false for nice to have criteria that can be skipped if needed. Use true by default unless you intentionally classify something as optional.",
+                    "examples": [
+                        true
+                    ]
+                }
+            }
+        },
+        "dependencies": {
+            "type": "array",
+            "items_type": "string",
+            "required": false,
+            "guidelines": "List other tickets or work items that must be completed before this ticket can be fully implemented. Use the identifiers used in your system. If there are no dependencies, use an empty array.",
+            "examples": [
+                [
+                    "T-100",
+                    "INFRA-7"
+                ]
+            ]
+        },
+        "suggested_review_mode": {
+            "type": "string",
+            "required": true,
+            "allowed_values": [
+                "PLAN_ONLY",
+                "CRITICAL_STEPS",
+                "FULL_CONTROL"
+            ],
+            "guidelines": "Choose how much human oversight is recommended for later stages based on risk_level and impact. Use PLAN_ONLY when risk_level is low or medium and changes are not security or performance critical. Use CRITICAL_STEPS when some parts are sensitive or high risk but not the entire ticket. Use FULL_CONTROL when the work is security critical, touches core performance hotspots, or can cause serious outages or data loss.",
+            "examples": [
+                "CRITICAL_STEPS"
+            ]
+        },
+        "open_questions_for_stakeholders": {
+            "type": "array",
+            "items_type": "string",
+            "required": false,
+            "guidelines": "List any questions that need answers from humans such as product owners, security, or legal. Each question should be clear and specific. Only include questions that could change the design or implementation decisions.",
+            "examples": [
+                [
+                    "Do we require email verification before first login?",
+                    "What is the minimum password length and complexity policy?"
+                ]
+            ]
+        },
+        "freeform_notes": {
+            "type": "string",
+            "required": false,
+            "guidelines": "Optional unstructured notes that do not fit cleanly into other fields. Use this sparingly as an escape hatch, not as a replacement for structured fields. Prefer to update specific fields when possible.",
+            "examples": [
+                "Stakeholder mentioned that a future phase will likely add SSO, but it is not in scope yet."
+            ]
+        }
+    },
+    "PlanPayload": {
+        "_meta": {
+            "description": "How the Planner (Tech Lead) should describe the solution and break the ticket into structured steps."
+        },
+        "ticket_id": {
+            "type": "string",
+            "required": true,
+            "guidelines": "Same as in RequirementsPayload.ticket_id. Never change it.",
+            "examples": [
+                "T-123"
+            ]
+        },
+        "plan_id": {
+            "type": "string",
+            "required": true,
+            "guidelines": "Unique identifier for this plan version for this ticket. Combine the ticket id and a version number or timestamp so older plans can be distinguished from newer ones.",
+            "examples": [
+                "plan_T-123_v1"
+            ]
+        },
+        "plan_version": {
+            "type": "integer",
+            "required": true,
+            "guidelines": "Monotonically increasing version number for this plan for a given ticket. Start at 1 for the first plan and increment by 1 each time the plan is regenerated or significantly changed.",
+            "examples": [
+                1
+            ]
+        },
+        "summary": {
+            "type": "string",
+            "required": true,
+            "guidelines": "One or two sentences summarizing the overall technical approach at a high level, understandable by a senior engineer or manager. Focus on main components and strategies, not detailed steps.",
+            "examples": [
+                "Extend the existing users table with authentication fields, add signup and login endpoints in the backend, and wire them to new login and signup screens in the frontend."
+            ]
+        },
+        "overall_risk_level": {
+            "type": "string",
+            "required": true,
+            "allowed_values": [
+                "low",
+                "medium",
+                "high",
+                "critical"
+            ],
+            "guidelines": "Based on all planned steps and the system impact, choose the overall risk. Use low if all steps are simple and failures are easily reversible. Use medium if some steps are non trivial or touch multiple components but the impact of issues is limited. Use high if steps affect core flows, shared libraries, or involve migrations or security sensitive logic. Use critical when there is realistic potential for data loss, major outages, or severe security issues if anything goes wrong.",
+            "examples": [
+                "medium"
+            ]
+        },
+        "overall_complexity": {
+            "type": "string",
+            "required": true,
+            "allowed_values": [
+                "trivial",
+                "simple",
+                "moderate",
+                "complex",
+                "very_complex"
+            ],
+            "guidelines": "Estimate the complexity of the work. Use trivial when it is a tiny change in one place likely under one hour. Use simple when it touches one or two files or functions and is straightforward for an average engineer. Use moderate when it touches several files, services, or layers and requires careful thought but is still within roughly one or two days of work. Use complex when it significantly affects multiple components, includes tricky logic, or requires coordination between services. Use very_complex when it spans many systems, requires significant design work, or likely takes several weeks.",
+            "examples": [
+                "moderate"
+            ]
+        },
+        "assumptions": {
+            "type": "array",
+            "items_type": "string",
+            "required": false,
+            "guidelines": "List important things you assume to be true that influence the plan. These might be tech stack details, env constraints, or availability of tools. Each assumption should be something that could potentially be wrong and would require plan adjustment if incorrect. When working in large monorepos or multi-service architectures, explicitly call out assumptions about which services, modules, or directories will be affected and which will not. This helps detect incorrect scope early.",
+            "examples": [
+                [
+                    "The backend service can install new dependencies.",
+                    "The existing users table can be modified without breaking other systems."
+                ]
+            ]
+        },
+        "risks": {
+            "type": "array",
+            "items_type": "string",
+            "required": false,
+            "guidelines": "List main specific risks associated with this plan that could cause failure or problems. Each item should describe one concrete risk, not generic statements. If there are no meaningful risks beyond normal coding errors, you can use an empty array.",
+            "examples": [
+                [
+                    "If password hashing is misconfigured, user passwords may not be adequately protected.",
+                    "Database migration could fail in production and block logins."
+                ]
+            ]
+        },
+        "questions_for_human": {
+            "type": "array",
+            "items_type": "string",
+            "required": false,
+            "guidelines": "List questions that need human clarification to choose between different design options or to validate assumptions. Only include questions that matter for the plan. Do not ask trivial questions that the agent can infer from the given context.",
+            "examples": [
+                [
+                    "Are we allowed to require users to verify their email before first login?",
+                    "Should sessions persist across browser restarts or only within a single browsing session?"
+                ]
+            ]
+        },
+        "recommended_review_mode": {
+            "type": "string",
+            "required": true,
+            "allowed_values": [
+                "PLAN_ONLY",
+                "CRITICAL_STEPS",
+                "FULL_CONTROL"
+            ],
+            "guidelines": "Based on the step breakdown, risk, and complexity, suggest how much human review is appropriate. Use PLAN_ONLY when steps are low to medium risk and mostly contained. Use CRITICAL_STEPS when some steps such as schema changes, core logic, or external integrations are high risk and should be reviewed, while others are safe to run. Use FULL_CONTROL when you judge that all or most steps need explicit human approval because of security, performance, or stability concerns.",
+            "examples": [
+                "CRITICAL_STEPS"
+            ]
+        },
+        "steps": {
+            "type": "array",
+            "items_type": "object",
+            "required": true,
+            "guidelines": "List the major steps required to complete the ticket in a logical order. Steps can have nested children for sub steps. Each step should represent a meaningful unit of work that the Implementer or other roles can act on. For typical feature work, aim for roughly 3–10 top-level steps. As a default, design each implementation step so that it is likely to touch no more than 1–2 services and 1–5 files and could plausibly be completed in a single focused work session. Use children to break down any step that feels too large or risky to review or roll back as a unit. Avoid ultra-fine steps that describe trivial edits (such as renaming a single variable) unless they are unusually risky.",
+            "item_fields": {
+                "id": {
+                    "type": "string",
+                    "required": true,
+                    "guidelines": "Unique identifier of this step within the plan. Use a simple, stable format such as S1, S2, S3 or S2.1 for sub steps. Do not reuse ids between steps in the same plan.",
+                    "examples": [
+                        "S1",
+                        "S2.1"
+                    ]
+                },
+                "title": {
+                    "type": "string",
+                    "required": true,
+                    "guidelines": "Short name that describes the step at a glance. It should be specific enough that someone can understand the intent without reading description.",
+                    "examples": [
+                        "Design auth data model and flows"
+                    ]
+                },
+                "description": {
+                    "type": "string",
+                    "required": true,
+                    "guidelines": "One or more sentences describing what exactly should be done in this step, including inputs and expected outputs. Avoid implementation details that belong in the ExecutionResult, but be concrete about goals and scope.",
+                    "examples": [
+                        "Design the database changes and request/response flows for user signup, login, and logout, including error cases such as invalid credentials."
+                    ]
+                },
+                "kind": {
+                    "type": "string",
+                    "required": true,
+                    "allowed_values": [
+                        "analysis",
+                        "design",
+                        "implementation",
+                        "testing",
+                        "documentation",
+                        "migration"
+                    ],
+                    "guidelines": "Choose the category that best describes the main nature of this step. Use analysis for understanding and clarifying requirements or existing behaviour. Use design for defining how the solution will work without writing actual code. Use implementation for coding or configuration changes. Use testing for writing or running tests and performing manual QA. Use documentation for writing or updating docs. Use migration for data or schema changes, especially those executed on live data.",
+                    "examples": [
+                        "design"
+                    ]
+                },
+                "owner_role": {
+                    "type": "string",
+                    "required": true,
+                    "allowed_values": [
+                        "Request Owner (Product Manager)",
+                        "Planner (Tech Lead)",
+                        "Implementer (Software Engineer)",
+                        "QA Specialist (QA Engineer)"
+                    ],
+                    "guidelines": "Assign the role primarily responsible for executing this step. Analysis and design steps usually belong to Planner (Tech Lead). Implementation steps belong to Implementer (Software Engineer). Testing steps belong to QA Specialist (QA Engineer). Requirements clarification may involve Request Owner (Product Manager).",
+                    "examples": [
+                        "Implementer (Software Engineer)"
+                    ]
+                },
+                "depends_on": {
+                    "type": "array",
+                    "items_type": "string",
+                    "required": true,
+                    "guidelines": "List step ids that must be completed before this step can start. Use empty array if the step can be done immediately. This forms the dependency graph for execution ordering.",
+                    "examples": [
+                        [],
+                        [
+                            "S1",
+                            "S2"
+                        ]
+                    ]
+                },
+                "related_acceptance_criteria": {
+                    "type": "array",
+                    "items_type": "string",
+                    "required": false,
+                    "guidelines": "List ids of acceptance criteria from RequirementsPayload that this step helps satisfy. Use this to trace work back to requirements. Use an empty array if there is no direct mapping.",
+                    "examples": [
+                        [
+                            "AC1",
+                            "AC2"
+                        ]
+                    ]
+                },
+                "risk_level": {
+                    "type": "string",
+                    "required": true,
+                    "allowed_values": [
+                        "low",
+                        "medium",
+                        "high",
+                        "critical"
+                    ],
+                    "guidelines": "Evaluate risk for this specific step, not the whole ticket. Use low for simple, reversible work with little impact such as updating a constant or adding log messages. Use medium for normal coding tasks that could cause bugs but are limited in blast radius. Use high for steps that change database structure, core business logic, or security sensitive code. Use critical when the step directly affects production data integrity, essential infrastructure, or strongly security relevant behaviour such as encryption or authentication.",
+                    "examples": [
+                        "high"
+                    ]
+                },
+                "requires_review": {
+                    "type": "boolean",
+                    "required": true,
+                    "guidelines": "Set to true if this step should be presented to a human for approval before execution or before its changes are applied. Mark true for steps with high or critical risk, or steps you believe a human expert should explicitly check. Mark false for routine or low risk steps where automation is acceptable.",
+                    "examples": [
+                        true
+                    ]
+                },
+                "status": {
+                    "type": "string",
+                    "required": true,
+                    "allowed_values": [
+                        "pending",
+                        "in_progress",
+                        "done",
+                        "blocked",
+                        "skipped"
+                    ],
+                    "guidelines": "When the plan is first created, set status to pending for all executable steps. Later, the system or agents will update this as work progresses. The Planner should not use statuses other than pending at initial creation.",
+                    "examples": [
+                        "pending"
+                    ]
+                },
+                "children": {
+                    "type": "array",
+                    "items_type": "object",
+                    "required": true,
+                    "guidelines": "Optional list of sub steps that further break down this step. Use children when a step is naturally composed of smaller, independently trackable units. If there are no sub steps, use an empty array.",
+                    "examples": [
+                        []
+                    ]
+                }
+            }
+        },
+        "freeform_notes": {
+            "type": "string",
+            "required": false,
+            "guidelines": "Optional freeform commentary about the plan, tradeoffs, or alternative approaches that were considered but not chosen. Use this only when the information does not fit any existing structured field.",
+            "examples": [
+                "If performance becomes an issue, we may need to introduce caching at the auth layer, but that is out of scope for this ticket."
+            ]
+        }
+    },
+    "ExecutionResultPayload": {
+        "_meta": {
+            "description": "How the Implementer (Software Engineer) reports work performed for one or more plan steps."
+        },
+        "ticket_id": {
+            "type": "string",
+            "required": true,
+            "guidelines": "Same ticket id as in the plan and requirements. Never change it.",
+            "examples": [
+                "T-123"
+            ]
+        },
+        "plan_id": {
+            "type": "string",
+            "required": true,
+            "guidelines": "Identifier of the plan this execution is following. Must match PlanPayload.plan_id. If a new plan version is created, future execution results must reference that new plan_id.",
+            "examples": [
+                "plan_T-123_v1"
+            ]
+        },
+        "handled_steps": {
+            "type": "array",
+            "items_type": "object",
+            "required": true,
+            "guidelines": "List which plan steps this run attempted to work on and how their statuses changed. Even if work failed or was blocked, include the step here.",
+            "item_fields": {
+                "step_id": {
+                    "type": "string",
+                    "required": true,
+                    "guidelines": "Id of the step from PlanPayload.steps that this execution touched.",
+                    "examples": [
+                        "S3"
+                    ]
+                },
+                "previous_status": {
+                    "type": "string",
+                    "required": true,
+                    "allowed_values": [
+                        "pending",
+                        "in_progress",
+                        "done",
+                        "blocked",
+                        "skipped"
+                    ],
+                    "guidelines": "The status before this execution run, as stored in the ticketing system. If unknown, assume pending for the first work on that step.",
+                    "examples": [
+                        "pending"
+                    ]
+                },
+                "new_status": {
+                    "type": "string",
+                    "required": true,
+                    "allowed_values": [
+                        "pending",
+                        "in_progress",
+                        "done",
+                        "blocked",
+                        "skipped"
+                    ],
+                    "guidelines": "The status after this execution run. Use done only if the step's work is fully completed from the Implementer perspective. Use blocked if progress cannot continue without external input. Use in_progress if work started but is not complete yet.",
+                    "examples": [
+                        "in_progress",
+                        "done"
+                    ]
+                }
+            }
+        },
+        "status": {
+            "type": "string",
+            "required": true,
+            "allowed_values": [
+                "success",
+                "partial",
+                "blocked",
+                "failed"
+            ],
+            "guidelines": "Summarize the overall outcome of this run. Use success when all intended changes were applied with no major issues. Use partial when some parts succeeded but others remain unfinished. Use blocked when progress stopped due to missing information, access, or external dependencies. Use failed when an error or issue prevented any intended change from being successfully completed in this run.",
+            "examples": [
+                "success"
+            ]
+        },
+        "summary": {
+            "type": "string",
+            "required": true,
+            "guidelines": "A short human readable summary of what was done or attempted. Mention the main changes, but do not list every line of code. Include important side effects such as tests written or scripts updated.",
+            "examples": [
+                "Implemented signup and login endpoints, added basic session handling, and created initial auth tests."
+            ]
+        },
+        "code_changes": {
+            "type": "array",
+            "items_type": "object",
+            "required": false,
+            "guidelines": "For work that involved code or configuration changes, list each file touched and describe the type of change. If no files were changed in this run, use an empty array.",
+            "item_fields": {
+                "file_path": {
+                    "type": "string",
+                    "required": true,
+                    "guidelines": "Relative path to the file that was created, modified, deleted, or renamed. Use the repository's normal path format.",
+                    "examples": [
+                        "src/backend/auth/routes.ts"
+                    ]
+                },
+                "change_type": {
+                    "type": "string",
+                    "required": true,
+                    "allowed_values": [
+                        "created",
+                        "modified",
+                        "deleted",
+                        "renamed"
+                    ],
+                    "guidelines": "Describe the nature of the change to this file. Use created when the file did not exist before. Use modified when it already existed and content was changed. Use deleted when the file was removed. Use renamed when the file path changed.",
+                    "examples": [
+                        "modified"
+                    ]
+                },
+                "description": {
+                    "type": "string",
+                    "required": true,
+                    "guidelines": "Short explanation of what was changed in that file, focusing on behaviour or purpose rather than line by line details. Include important points like new endpoints, validations, or removed logic.",
+                    "examples": [
+                        "Added signup and login routes and integrated them with the user service."
+                    ]
+                }
+            }
+        },
+        "next_recommended_steps": {
+            "type": "array",
+            "items_type": "string",
+            "required": false,
+            "guidelines": "List concrete suggestions for what should happen next to move the ticket forward. These can reference plan step ids or be free text. Use this to guide the controller or human on how to continue.",
+            "examples": [
+                [
+                    "Mark step S3 as done if you approve the auth changes.",
+                    "Proceed to step S4 to expand auth test coverage."
+                ]
+            ]
+        },
+        "plan_feedback": {
+            "_meta": {
+                "description": "Implementer feedback about the quality and usefulness of the current plan. Used by the system to decide whether replanning is needed."
+            },
+            "sufficient_for_execution": {
+                "type": "string",
+                "required": true,
+                "allowed_values": [
+                    "yes",
+                    "partially",
+                    "no"
+                ],
+                "guidelines": "Rate whether the existing plan was sufficient to carry out the work attempted in this run. Use " yes " when the plan was clear and correctly scoped. Use " partially " when the plan was mostly usable but had gaps or ambiguities that required guessing. Use " no " when the plan was misleading, missing key steps, or prevented correct implementation.",
+                "examples": [
+                    "partially"
+                ]
+            },
+            "issues": {
+                "type": "array",
+                "items_type": "object",
+                "required": false,
+                "guidelines": "List concrete issues encountered with the plan that affected execution. Each issue should describe a single problem and, when possible, point to specific steps.",
+                "item_fields": {
+                    "category": {
+                        "type": "string",
+                        "required": true,
+                        "allowed_values": [
+                            "missing_information",
+                            "wrong_assumption",
+                            "over_scoped_step",
+                            "under_scoped_step",
+                            "unclear_acceptance_criteria",
+                            "other"
+                        ],
+                        "guidelines": "Classify the type of problem with the plan. Use missing_information when key details are absent. Use wrong_assumption when an assumption in the plan turned out false. Use over_scoped_step when a single step is too large to execute safely. Use under_scoped_step when a step is too small or fragmented. Use unclear_acceptance_criteria when requirements mapping is unclear. Use other when none of the above clearly fit and explain in description.",
+                        "examples": [
+                            "over_scoped_step"
+                        ]
+                    },
+                    "description": {
+                        "type": "string",
+                        "required": true,
+                        "guidelines": "Describe what was wrong with the plan in enough detail that a Planner can adjust it. Focus on how the issue affected implementation rather than blaming.",
+                        "examples": [
+                            "Step S3 bundles DB migration, API changes, and frontend changes in one step, which made it hard to complete or roll back safely."
+                        ]
+                    },
+                    "related_steps": {
+                        "type": "array",
+                        "items_type": "string",
+                        "required": false,
+                        "guidelines": "List ids of plan steps that are most affected by this issue. Leave empty only if the issue truly applies to the entire plan.",
+                        "examples": [
+                            [
+                                "S3",
+                                "S4"
+                            ]
+                        ]
+                    }
+                }
+            },
+            "replan_recommended": {
+                "type": "boolean",
+                "required": false,
+                "guidelines": "Set to true if the Implementer believes the Planner should generate a revised plan before further execution because the current plan is significantly flawed or outdated.",
+                "examples": [
+                    true
+                ]
+            }
+        },
+        "human_review": {
+            "_meta": {
+                "description": "Whether this particular execution result should be manually reviewed and what to look at."
+            },
+            "suggested": {
+                "type": "boolean",
+                "required": true,
+                "guidelines": "Set to true if you believe a human should review these changes before they are accepted or deployed, based on sensitivity, complexity, or importance. Set to false if the changes are minor, low risk, and within previously approved boundaries.",
+                "examples": [
+                    true
+                ]
+            },
+            "reason": {
+                "type": "string",
+                "required": false,
+                "guidelines": "If suggested is true, explain briefly why human review is recommended, such as security relevance, schema changes, or performance critical code.",
+                "examples": [
+                    "This run changes password handling logic and cookie configuration which is security sensitive."
+                ]
+            },
+            "review_focus": {
+                "type": "array",
+                "items_type": "string",
+                "required": false,
+                "guidelines": "List specific aspects or files that the human reviewer should pay attention to. This helps make manual review efficient and targeted.",
+                "examples": [
+                    [
+                        "Verify that password hashing uses an appropriate algorithm and parameters.",
+                        "Check that session cookies are configured securely."
+                    ]
+                ]
+            }
+        },
+        "blockers": {
+            "type": "array",
+            "items_type": "string",
+            "required": false,
+            "guidelines": "If status is blocked or partial due to external issues, list the reasons here. Each blocker should be something that must be resolved before work can continue on the affected steps.",
+            "examples": [
+                [
+                    "Password policy requirements are unclear.",
+                    "Database migration tool is failing in the staging environment."
+                ]
+            ]
+        },
+        "questions_for_human": {
+            "type": "array",
+            "items_type": "string",
+            "required": false,
+            "guidelines": "List any concrete questions to human team members whose answers are needed to make correct implementation decisions. Do not ask trivial questions that the agent can infer from the given context.",
+            "examples": [
+                [
+                    "Are users allowed to reuse email addresses across environments?",
+                    "Should we lock accounts after several failed login attempts?"
+                ]
+            ]
+        },
+        "freeform_notes": {
+            "type": "string",
+            "required": false,
+            "guidelines": "Optional unstructured notes about the execution that do not fit into other fields. Use this for nuances that may help future runs or human reviewers, but avoid repeating information that already exists in structured fields.",
+            "examples": [
+                "While testing locally, I noticed flaky test behaviour unrelated to auth; it may warrant a separate ticket later."
+            ]
+        }
+    },
+    "QaReportPayload": {
+        "_meta": {
+            "description": "How the QA Specialist (QA Engineer) reports validation results and quality assessment for a ticket."
+        },
+        "ticket_id": {
+            "type": "string",
+            "required": true,
+            "guidelines": "Same ticket id as used in other payloads. Never change or reformat it.",
+            "examples": [
+                "T-123"
+            ]
+        },
+        "plan_id": {
+            "type": "string",
+            "required": true,
+            "guidelines": "The plan id that this QA report is evaluating. Normally the latest approved plan for this ticket.",
+            "examples": [
+                "plan_T-123_v1"
+            ]
+        },
+        "overall_status": {
+            "type": "string",
+            "required": true,
+            "allowed_values": [
+                "pass",
+                "fail",
+                "partial",
+                "blocked"
+            ],
+            "guidelines": "Summarize the overall test outcome. Use pass when all must have acceptance criteria have been tested and passed and no high or critical issues remain. Use fail when testing shows that key acceptance criteria fail or critical issues exist. Use partial when some tests passed but some criteria or areas were not yet tested. Use blocked when testing could not proceed because of environment issues or missing functionality.",
+            "examples": [
+                "partial"
+            ]
+        },
+        "summary": {
+            "type": "string",
+            "required": true,
+            "guidelines": "Short human readable summary of the QA findings, mentioning whether the feature is ready, what is missing, and any main concerns.",
+            "examples": [
+                "Core signup and login flows work for normal cases, but session persistence and password policy have issues that must be addressed."
+            ]
+        },
+        "tested_acceptance_criteria": {
+            "type": "array",
+            "items_type": "object",
+            "required": false,
+            "guidelines": "For each acceptance criterion that was explicitly tested, record the test result and any notes. This gives traceability between requirements and QA.",
+            "item_fields": {
+                "id": {
+                    "type": "string",
+                    "required": true,
+                    "guidelines": "Id of the acceptance criterion from RequirementsPayload.acceptance_criteria.",
+                    "examples": [
+                        "AC1"
+                    ]
+                },
+                "status": {
+                    "type": "string",
+                    "required": true,
+                    "allowed_values": [
+                        "pass",
+                        "fail",
+                        "not_tested"
+                    ],
+                    "guidelines": "Result of tests for this specific criterion. Use pass when tests show it behaves as required. Use fail when behaviour does not meet the criterion. Use not_tested when QA did not yet validate this criterion.",
+                    "examples": [
+                        "pass"
+                    ]
+                },
+                "notes": {
+                    "type": "string",
+                    "required": false,
+                    "guidelines": "Optional remarks, such as how it was tested, edge cases, or limitations. Use this to clarify any deviation or partial coverage.",
+                    "examples": [
+                        "Tested sign up and login with valid credentials in Chrome and Firefox."
+                    ]
+                }
+            }
+        },
+        "checks": {
+            "type": "array",
+            "items_type": "object",
+            "required": false,
+            "guidelines": "List individual checks performed, such as unit test runs, integration tests, manual scenarios, or static analysis. This gives a detailed testing history.",
+            "item_fields": {
+                "id": {
+                    "type": "string",
+                    "required": true,
+                    "guidelines": "Short identifier for the check within this QA report, such as CHK1, CHK2.",
+                    "examples": [
+                        "CHK1"
+                    ]
+                },
+                "type": {
+                    "type": "string",
+                    "required": true,
+                    "allowed_values": [
+                        "unit_tests",
+                        "integration_tests",
+                        "manual",
+                        "static_analysis",
+                        "other"
+                    ],
+                    "guidelines": "Kind of QA activity. Use unit_tests for automated tests that run at function or class level. Use integration_tests for tests that cross components or services. Use manual for manual exploratory or scripted testing. Use static_analysis for tools like linters and security scanners. Use other if none match and explain in details.",
+                    "examples": [
+                        "manual"
+                    ]
+                },
+                "related_steps": {
+                    "type": "array",
+                    "items_type": "string",
+                    "required": false,
+                    "guidelines": "Step ids from the plan that this check primarily relates to. Use an empty array if the check covers multiple areas broadly.",
+                    "examples": [
+                        [
+                            "S3",
+                            "S4"
+                        ]
+                    ]
+                },
+                "status": {
+                    "type": "string",
+                    "required": true,
+                    "allowed_values": [
+                        "pass",
+                        "fail",
+                        "not_run"
+                    ],
+                    "guidelines": "Outcome of this specific check. Use pass if the check ran and found no issues. Use fail if the check ran and found problems. Use not_run if the planned check could not be executed.",
+                    "examples": [
+                        "fail"
+                    ]
+                },
+                "details": {
+                    "type": "string",
+                    "required": true,
+                    "guidelines": "Describe what this check did and what was observed. Include enough information for someone else to reproduce the check or understand the failure.",
+                    "examples": [
+                        "Manually tested logging out and logging back in. Found that the session token does not expire when expected."
+                    ]
+                }
+            }
+        },
+        "issues_found": {
+            "type": "array",
+            "items_type": "object",
+            "required": false,
+            "guidelines": "List all distinct issues identified during testing. Each issue should describe a single problem and its severity, cause, and suggested fix at a high level.",
+            "item_fields": {
+                "id": {
+                    "type": "string",
+                    "required": true,
+                    "guidelines": "Short identifier for the issue within this ticket, such as ISS1, ISS2.",
+                    "examples": [
+                        "ISS1"
+                    ]
+                },
+                "severity": {
+                    "type": "string",
+                    "required": true,
+                    "allowed_values": [
+                        "low",
+                        "medium",
+                        "high",
+                        "critical"
+                    ],
+                    "guidelines": "Severity reflects impact on users and the system. Use low for minor cosmetic or non blocking issues. Use medium for noticeable issues that degrade but do not block key flows. Use high for problems that break important functionality for many users or that materially reduce security. Use critical for issues that cause crashes, data loss, or severe security vulnerabilities.",
+                    "examples": [
+                        "high"
+                    ]
+                },
+                "description": {
+                    "type": "string",
+                    "required": true,
+                    "guidelines": "Clear description of what is wrong, written so that someone who did not run the tests can understand the problem. Include what was expected and what actually happened.",
+                    "examples": [
+                        "Session cookie is missing the secure flag in production configuration, which could allow it to be transmitted over insecure connections."
+                    ]
+                },
+                "related_steps": {
+                    "type": "array",
+                    "items_type": "string",
+                    "required": false,
+                    "guidelines": "Plan step ids most responsible for this issue. Leave empty if no clear mapping.",
+                    "examples": [
+                        [
+                            "S3"
+                        ]
+                    ]
+                },
+                "suspected_cause": {
+                    "type": "string",
+                    "required": false,
+                    "guidelines": "Brief hypothesis of why the issue occurs, based on the QA agent's understanding. This helps implementers fix the problem faster.",
+                    "examples": [
+                        "Cookie options are not set differently for production and development environments."
+                    ]
+                },
+                "suggested_fix": {
+                    "type": "string",
+                    "required": false,
+                    "guidelines": "Suggestion for how to address the issue at a high level. This is not binding but should be useful guidance for the Implementer.",
+                    "examples": [
+                        "Update the authentication middleware to set Secure and HttpOnly flags for cookies in production."
+                    ]
+                }
+            }
+        },
+        "recommendation": {
+            "type": "string",
+            "required": true,
+            "guidelines": "Final QA recommendation regarding whether the ticket should be considered done, needs fixes, or should not be released. Be explicit, for example recommend not closing the ticket until certain issues are resolved.",
+            "examples": [
+                "Do not mark this ticket as done or release to production until ISS1 and ISS2 are fixed and AC2 passes."
+            ]
+        },
+        "questions_for_human": {
+            "type": "array",
+            "items_type": "string",
+            "required": false,
+            "guidelines": "Questions for humans about acceptable risk, edge case expectations, or policies that affect whether issues must be fixed. Only include questions that influence the decision to accept or reject the current implementation.",
+            "examples": [
+                [
+                    "Is it acceptable if sessions expire when users close the browser, or must sessions persist across restarts?",
+                    "Do we have a formal security policy for cookie configuration that must be followed here?"
+                ]
+            ]
+        },
+        "freeform_notes": {
+            "type": "string",
+            "required": false,
+            "guidelines": "Optional unstructured notes from QA that are useful but do not belong in issues_found or tested_acceptance_criteria. Use this for broader impressions or follow-up ideas.",
+            "examples": [
+                "Overall UX for the signup flow is acceptable but could benefit from clearer error messages in a later iteration."
+            ]
+        }
+    }
+}
