@@ -1,13 +1,13 @@
 import { Codex, type ApprovalMode, type SandboxMode } from "@openai/codex-sdk";
-import { config } from "./config.js";
+import { config } from "../config.js";
 import type {
   AgentOutputEnvelope,
   AgentRole,
   ExecutionResultPayload,
   PlanPayload,
   QaReportPayload,
-} from "./payloadTypes.js";
-import { recordQaReport } from "./storage.js";
+} from "../payloadTypes.js";
+import { recordQaReport } from "../storage.js";
 
 const QA_ROLE: AgentRole = "QA Specialist (QA Engineer)";
 
@@ -143,4 +143,3 @@ function buildQaPrompt(options: QaRunOptions): string {
     ...guidance,
   ].join("\n");
 }
-

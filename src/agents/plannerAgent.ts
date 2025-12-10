@@ -1,12 +1,12 @@
 import { Codex, type ApprovalMode, type SandboxMode } from "@openai/codex-sdk";
-import { config } from "./config.js";
+import { config } from "../config.js";
 import type {
   AgentOutputEnvelope,
   AgentRole,
   PlanPayload,
   RequirementsPayload,
-} from "./payloadTypes.js";
-import { recordPlan } from "./storage.js";
+} from "../payloadTypes.js";
+import { recordPlan } from "../storage.js";
 
 const PLANNER_ROLE: AgentRole = "Planner (Tech Lead)";
 
@@ -241,4 +241,3 @@ function buildPlannerPrompt(options: PlannerRunOptions): string {
     .filter((line) => line !== "")
     .join("\n");
 }
-

@@ -1,13 +1,13 @@
 import { Codex, type ApprovalMode, type SandboxMode } from "@openai/codex-sdk";
-import { config } from "./config.js";
+import { config } from "../config.js";
 import type {
   AgentOutputEnvelope,
   AgentRole,
   ExecutionResultPayload,
   PlanPayload,
   PlanStep,
-} from "./payloadTypes.js";
-import { recordExecutionResult } from "./storage.js";
+} from "../payloadTypes.js";
+import { recordExecutionResult } from "../storage.js";
 
 const IMPLEMENTER_ROLE: AgentRole = "Implementer (Software Engineer)";
 
@@ -161,4 +161,3 @@ function buildImplementerPrompt(options: ImplementerRunOptions): string {
     ...guidance,
   ].join("\n");
 }
-

@@ -1,11 +1,11 @@
 import { Codex, type ApprovalMode, type SandboxMode } from "@openai/codex-sdk";
-import { config } from "./config.js";
+import { config } from "../config.js";
 import type {
   AgentOutputEnvelope,
   AgentRole,
   RequirementsPayload,
-} from "./payloadTypes.js";
-import { recordRequirements } from "./storage.js";
+} from "../payloadTypes.js";
+import { recordRequirements } from "../storage.js";
 
 const REQUIREMENTS_ROLE: AgentRole = "Request Owner (Product Manager)";
 

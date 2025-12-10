@@ -8,10 +8,10 @@ import {
   recordRequirements,
   upsertTicket,
 } from "../storage.js";
-import { runPlannerForTicket } from "../plannerAgent.js";
-import { runRequirementsForTicket } from "../requirementsAgent.js";
-import { runImplementerForTicket } from "../implementerAgent.js";
-import { runQaForTicket } from "../qaAgent.js";
+import { runPlannerForTicket } from "../agents/plannerAgent.js";
+import { runRequirementsForTicket } from "../agents/requirementsAgent.js";
+import { runImplementerForTicket } from "../agents/implementerAgent.js";
+import { runQaForTicket } from "../agents/qaAgent.js";
 import type {
   AgentOutputEnvelope,
   ExecutionResultPayload,
