@@ -59,9 +59,7 @@ export function getTicket(ticketId: string): TicketRecord | undefined {
   return tickets.get(ticketId);
 }
 
-export function recordRequirements(
-  envelope: AgentOutputEnvelope<RequirementsPayload>,
-): TicketRecord {
+export function recordRequirements(envelope: AgentOutputEnvelope<RequirementsPayload>): TicketRecord {
   const ticket = upsertTicket(envelope.ticket_id);
   ticket.latestRequirements = envelope;
   ticket.updatedAt = nowIso();
@@ -69,9 +67,7 @@ export function recordRequirements(
   return ticket;
 }
 
-export function recordPlan(
-  envelope: AgentOutputEnvelope<PlanPayload>,
-): TicketRecord {
+export function recordPlan(envelope: AgentOutputEnvelope<PlanPayload>): TicketRecord {
   const ticket = upsertTicket(envelope.ticket_id);
   ticket.latestPlan = envelope;
   ticket.planHistory.push(envelope);
@@ -80,9 +76,7 @@ export function recordPlan(
   return ticket;
 }
 
-export function recordExecutionResult(
-  envelope: AgentOutputEnvelope<ExecutionResultPayload>,
-): TicketRecord {
+export function recordExecutionResult(envelope: AgentOutputEnvelope<ExecutionResultPayload>): TicketRecord {
   const ticket = upsertTicket(envelope.ticket_id);
   ticket.executionResults.push(envelope);
   ticket.updatedAt = nowIso();
@@ -90,9 +84,7 @@ export function recordExecutionResult(
   return ticket;
 }
 
-export function recordQaReport(
-  envelope: AgentOutputEnvelope<QaReportPayload>,
-): TicketRecord {
+export function recordQaReport(envelope: AgentOutputEnvelope<QaReportPayload>): TicketRecord {
   const ticket = upsertTicket(envelope.ticket_id);
   ticket.qaReports.push(envelope);
   ticket.updatedAt = nowIso();

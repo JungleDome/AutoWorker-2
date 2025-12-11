@@ -1,21 +1,7 @@
 import { create } from "zustand";
 
-import {
-  createTicket,
-  fetchTicket,
-  fetchTickets,
-  runExecution,
-  runPlan,
-  runQa,
-  runRequirements,
-} from "../lib/api";
-import type {
-  ExecutionRequest,
-  PlanRequest,
-  QaRequest,
-  RequirementsRequest,
-  TicketRecord,
-} from "../types";
+import { createTicket, fetchTicket, fetchTickets, runExecution, runPlan, runQa, runRequirements } from "../lib/api";
+import type { ExecutionRequest, PlanRequest, QaRequest, RequirementsRequest, TicketRecord } from "../types";
 
 interface TicketState {
   baseUrl: string;
@@ -29,10 +15,7 @@ interface TicketState {
   loadTickets: () => Promise<void>;
   ensureTicket: (ticketId: string) => Promise<TicketRecord | undefined>;
   refreshTicket: (ticketId: string) => Promise<void>;
-  runRequirements: (
-    ticketId: string,
-    payload: RequirementsRequest,
-  ) => Promise<void>;
+  runRequirements: (ticketId: string, payload: RequirementsRequest) => Promise<void>;
   runPlan: (ticketId: string, payload: PlanRequest) => Promise<void>;
   runExecution: (ticketId: string, payload: ExecutionRequest) => Promise<void>;
   runQa: (ticketId: string, payload: QaRequest) => Promise<void>;
@@ -49,8 +32,7 @@ function mergeTicket(list: TicketRecord[], ticket: TicketRecord) {
 }
 
 export const useTicketsStore = create<TicketState>((set, get) => ({
-  baseUrl: (typeof window !== "undefined" && import.meta.env.VITE_API_BASE) ||
-    "http://localhost:3000",
+  baseUrl: (typeof window !== "undefined" && import.meta.env.VITE_API_BASE) || "http://localhost:3000",
   tickets: [],
   loading: false,
   error: undefined,

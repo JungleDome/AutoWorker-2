@@ -1,12 +1,6 @@
 import { Codex, type ApprovalMode, type SandboxMode } from "@openai/codex-sdk";
 import { config } from "../config.js";
-import type {
-  AgentOutputEnvelope,
-  AgentRole,
-  ExecutionResultPayload,
-  PlanPayload,
-  PlanStep,
-} from "../models/domainTypes.js";
+import type { AgentOutputEnvelope, AgentRole, ExecutionResultPayload, PlanPayload, PlanStep } from "../models/domainTypes.js";
 import { recordExecutionResult } from "../storage.js";
 
 const IMPLEMENTER_ROLE: AgentRole = "Implementer (Software Engineer)";
@@ -20,9 +14,7 @@ export interface ImplementerRunOptions {
   notesForAgent?: string;
 }
 
-export async function runImplementerForTicket(
-  options: ImplementerRunOptions,
-): Promise<AgentOutputEnvelope<ExecutionResultPayload>> {
+export async function runImplementerForTicket(options: ImplementerRunOptions): Promise<AgentOutputEnvelope<ExecutionResultPayload>> {
   const thread = codex.startThread({
     model: config.codex.model,
     sandboxMode: config.codex.sandboxMode as SandboxMode | undefined,
@@ -39,35 +31,25 @@ export async function runImplementerForTicket(
 
   let envelope: AgentOutputEnvelope<ExecutionResultPayload>;
   try {
-    envelope =
-      JSON.parse(turn.finalResponse) as AgentOutputEnvelope<ExecutionResultPayload>;
+    envelope = JSON.parse(turn.finalResponse) as AgentOutputEnvelope<ExecutionResultPayload>;
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown parse error";
+    const message = error instanceof Error ? error.message : "Unknown parse error";
     throw new Error(`Failed to parse execution output as JSON: ${message}`);
   }
 
   if (envelope.payload_type !== "execution_result") {
-    throw new Error(
-      `Implementer must return payload_type="execution_result", got "${envelope.payload_type}"`,
-    );
+    throw new Error(`Implementer must return payload_type="execution_result", got "${envelope.payload_type}"`);
   }
   if (envelope.agent_role !== IMPLEMENTER_ROLE) {
-    throw new Error(
-      `Implementer must return agent_role="${IMPLEMENTER_ROLE}", got "${envelope.agent_role}"`,
-    );
+    throw new Error(`Implementer must return agent_role="${IMPLEMENTER_ROLE}", got "${envelope.agent_role}"`);
   }
   if (envelope.ticket_id !== options.ticketId) {
-    throw new Error(
-      `Implementer returned ticket_id="${envelope.ticket_id}" but expected "${options.ticketId}"`,
-    );
+    throw new Error(`Implementer returned ticket_id="${envelope.ticket_id}" but expected "${options.ticketId}"`);
   }
 
   const payloadPlanId = (envelope.payload as { plan_id?: string }).plan_id;
   if (payloadPlanId && payloadPlanId !== options.plan.plan_id) {
-    throw new Error(
-      `Implementer returned plan_id="${payloadPlanId}" but expected "${options.plan.plan_id}"`,
-    );
+    throw new Error(`Implementer returned plan_id="${payloadPlanId}" but expected "${options.plan.plan_id}"`);
   }
 
   recordExecutionResult(envelope);
@@ -82,8 +64,8 @@ function buildImplementerPrompt(options: ImplementerRunOptions): string {
     "",
     "CRITICAL:",
     "- Respond with JSON only, no surrounding text.",
-    "- agent_role MUST be exactly \"Implementer (Software Engineer)\".",
-    "- payload_type MUST be \"execution_result\".",
+    '- agent_role MUST be exactly "Implementer (Software Engineer)".',
+    '- payload_type MUST be "execution_result".',
     "- ticket_id MUST match the provided ticket id.",
     "- payload.plan_id MUST match the provided plan_id.",
     "- payload.handled_steps MUST list each plan step you attempted to work on and how its status changed.",
@@ -114,35 +96,23 @@ function buildImplementerPrompt(options: ImplementerRunOptions): string {
   }
 
   const allSteps = flattenSteps(options.plan.steps);
-  const targetIds = options.stepIds && options.stepIds.length > 0
-    ? new Set(options.stepIds)
-    : undefined;
+  const targetIds = options.stepIds && options.stepIds.length > 0 ? new Set(options.stepIds) : undefined;
 
   for (const step of allSteps) {
     if (targetIds && !targetIds.has(step.id)) {
       continue;
     }
-    stepSummaries.push(
-      `- [${step.id}] (${step.kind}, owner=${step.owner_role}, risk=${step.risk_level}) ${step.title}`,
-    );
+    stepSummaries.push(`- [${step.id}] (${step.kind}, owner=${step.owner_role}, risk=${step.risk_level}) ${step.title}`);
   }
 
   const stepsSection = [
     "Relevant plan steps:",
-    ...(stepSummaries.length > 0
-      ? stepSummaries
-      : ["(No specific steps requested; you may pick appropriate pending steps.)"]),
+    ...(stepSummaries.length > 0 ? stepSummaries : ["(No specific steps requested; you may pick appropriate pending steps.)"]),
     "",
   ];
 
   const notesSection =
-    options.notesForAgent && options.notesForAgent.trim().length > 0
-      ? [
-          "Additional notes from controller/human:",
-          options.notesForAgent,
-          "",
-        ]
-      : [];
+    options.notesForAgent && options.notesForAgent.trim().length > 0 ? ["Additional notes from controller/human:", options.notesForAgent, ""] : [];
 
   const guidance = [
     "Guidance:",
@@ -153,11 +123,5 @@ function buildImplementerPrompt(options: ImplementerRunOptions): string {
     "- Use human_review.suggested and human_review.focus_areas to indicate if manual review is needed before merging or deploying.",
   ];
 
-  return [
-    ...header,
-    ...planSummary,
-    ...stepsSection,
-    ...notesSection,
-    ...guidance,
-  ].join("\n");
+  return [...header, ...planSummary, ...stepsSection, ...notesSection, ...guidance].join("\n");
 }

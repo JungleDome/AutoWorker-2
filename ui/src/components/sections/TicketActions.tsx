@@ -5,12 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
-import type {
-  ExecutionRequest,
-  PlanRequest,
-  QaRequest,
-  RequirementsRequest,
-} from "../../types";
+import type { ExecutionRequest, PlanRequest, QaRequest, RequirementsRequest } from "../../types";
 import { useTicketsStore } from "../../store/useTicketsStore";
 
 interface TicketActionsProps {
@@ -34,10 +29,7 @@ export function TicketActions({ ticketId }: TicketActionsProps) {
 
   const { runRequirements, runPlan, runExecution, runQa } = useTicketsStore();
 
-  const handleSubmit = async (
-    kind: string,
-    action: () => Promise<void>,
-  ) => {
+  const handleSubmit = async (kind: string, action: () => Promise<void>) => {
     setSubmitting(kind);
     setMessage(undefined);
     try {
@@ -88,11 +80,7 @@ export function TicketActions({ ticketId }: TicketActionsProps) {
           </div>
           <Button
             disabled={!requirementsPayload.raw_description || submitting === "requirements"}
-            onClick={() =>
-              handleSubmit("requirements", () =>
-                runRequirements(ticketId, requirementsPayload),
-              )
-            }
+            onClick={() => handleSubmit("requirements", () => runRequirements(ticketId, requirementsPayload))}
           >
             {submitting === "requirements" ? "Dispatching..." : "Run requirements"}
           </Button>
@@ -117,10 +105,7 @@ export function TicketActions({ ticketId }: TicketActionsProps) {
               }
             />
           </div>
-          <Button
-            disabled={submitting === "plan"}
-            onClick={() => handleSubmit("plan", () => runPlan(ticketId, planPayload))}
-          >
+          <Button disabled={submitting === "plan"} onClick={() => handleSubmit("plan", () => runPlan(ticketId, planPayload))}>
             {submitting === "plan" ? "Dispatching..." : "Run planner"}
           </Button>
         </CardContent>
@@ -153,7 +138,7 @@ export function TicketActions({ ticketId }: TicketActionsProps) {
                 placeholder="Comma separated"
                 value={(executionPayload.step_ids ?? []).join(", ")}
                 onChange={(event) => {
-                  const value = event.target.value;
+                  const { value } = event.target;
                   const steps = value
                     .split(",")
                     .map((s) => s.trim())
@@ -180,12 +165,7 @@ export function TicketActions({ ticketId }: TicketActionsProps) {
               }
             />
           </div>
-          <Button
-            disabled={submitting === "execution"}
-            onClick={() =>
-              handleSubmit("execution", () => runExecution(ticketId, executionPayload))
-            }
-          >
+          <Button disabled={submitting === "execution"} onClick={() => handleSubmit("execution", () => runExecution(ticketId, executionPayload))}>
             {submitting === "execution" ? "Dispatching..." : "Run execution"}
           </Button>
         </CardContent>
@@ -202,9 +182,7 @@ export function TicketActions({ ticketId }: TicketActionsProps) {
               id="qa_plan"
               placeholder="Optional plan to evaluate"
               value={qaPayload.plan_id ?? ""}
-              onChange={(event) =>
-                setQaPayload((state) => ({ ...state, plan_id: event.target.value }))
-              }
+              onChange={(event) => setQaPayload((state) => ({ ...state, plan_id: event.target.value }))}
             />
           </div>
           <div className="space-y-1">
@@ -221,18 +199,13 @@ export function TicketActions({ ticketId }: TicketActionsProps) {
               }
             />
           </div>
-          <Button
-            disabled={submitting === "qa"}
-            onClick={() => handleSubmit("qa", () => runQa(ticketId, qaPayload))}
-          >
+          <Button disabled={submitting === "qa"} onClick={() => handleSubmit("qa", () => runQa(ticketId, qaPayload))}>
             {submitting === "qa" ? "Dispatching..." : "Run QA"}
           </Button>
         </CardContent>
       </Card>
 
-      {message && (
-        <div className="lg:col-span-2 text-sm text-muted-foreground">{message}</div>
-      )}
+      {message && <div className="lg:col-span-2 text-sm text-muted-foreground">{message}</div>}
     </div>
   );
 }

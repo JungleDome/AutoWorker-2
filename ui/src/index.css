@@ -36,6 +36,7 @@ pre {
   word-break: break-word;
 }
 
-input, textarea {
+input,
+textarea {
   font: inherit;
 }

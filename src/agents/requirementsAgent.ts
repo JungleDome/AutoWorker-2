@@ -1,10 +1,6 @@
 import { Codex, type ApprovalMode, type SandboxMode } from "@openai/codex-sdk";
 import { config } from "../config.js";
-import type {
-  AgentOutputEnvelope,
-  AgentRole,
-  RequirementsPayload,
-} from "../models/domainTypes.js";
+import type { AgentOutputEnvelope, AgentRole, RequirementsPayload } from "../models/domainTypes.js";
 import { recordRequirements } from "../storage.js";
 
 const REQUIREMENTS_ROLE: AgentRole = "Request Owner (Product Manager)";
@@ -17,9 +13,7 @@ export interface RequirementsRunOptions {
   notesForAgent?: string;
 }
 
-export async function runRequirementsForTicket(
-  options: RequirementsRunOptions,
-): Promise<AgentOutputEnvelope<RequirementsPayload>> {
+export async function runRequirementsForTicket(options: RequirementsRunOptions): Promise<AgentOutputEnvelope<RequirementsPayload>> {
   const thread = codex.startThread({
     model: config.codex.model,
     sandboxMode: config.codex.sandboxMode as SandboxMode | undefined,
@@ -36,28 +30,20 @@ export async function runRequirementsForTicket(
 
   let envelope: AgentOutputEnvelope<RequirementsPayload>;
   try {
-    envelope =
-      JSON.parse(turn.finalResponse) as AgentOutputEnvelope<RequirementsPayload>;
+    envelope = JSON.parse(turn.finalResponse) as AgentOutputEnvelope<RequirementsPayload>;
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown parse error";
+    const message = error instanceof Error ? error.message : "Unknown parse error";
     throw new Error(`Failed to parse requirements output as JSON: ${message}`);
   }
 
   if (envelope.payload_type !== "requirements") {
-    throw new Error(
-      `Requirements agent must return payload_type="requirements", got "${envelope.payload_type}"`,
-    );
+    throw new Error(`Requirements agent must return payload_type="requirements", got "${envelope.payload_type}"`);
   }
   if (envelope.agent_role !== REQUIREMENTS_ROLE) {
-    throw new Error(
-      `Requirements agent must return agent_role="${REQUIREMENTS_ROLE}", got "${envelope.agent_role}"`,
-    );
+    throw new Error(`Requirements agent must return agent_role="${REQUIREMENTS_ROLE}", got "${envelope.agent_role}"`);
   }
   if (envelope.ticket_id !== options.ticketId) {
-    throw new Error(
-      `Requirements agent returned ticket_id="${envelope.ticket_id}" but expected "${options.ticketId}"`,
-    );
+    throw new Error(`Requirements agent returned ticket_id="${envelope.ticket_id}" but expected "${options.ticketId}"`);
   }
 
   recordRequirements(envelope);
@@ -72,29 +58,17 @@ function buildRequirementsPrompt(options: RequirementsRunOptions): string {
     "",
     "CRITICAL:",
     "- Respond with JSON only, no surrounding text.",
-    "- agent_role MUST be exactly \"Request Owner (Product Manager)\".",
-    "- payload_type MUST be \"requirements\".",
+    '- agent_role MUST be exactly "Request Owner (Product Manager)".',
+    '- payload_type MUST be "requirements".',
     "- ticket_id MUST match the provided ticket id.",
     "- payload MUST follow RequirementsPayload, including title, problem_statement, goal_statement, acceptance_criteria, and constraints.",
     "",
   ];
 
-  const ticketSection = [
-    `Ticket id: ${options.ticketId}`,
-    "",
-    "Raw ticket description:",
-    options.rawTicketDescription,
-    "",
-  ];
+  const ticketSection = [`Ticket id: ${options.ticketId}`, "", "Raw ticket description:", options.rawTicketDescription, ""];
 
   const notesSection =
-    options.notesForAgent && options.notesForAgent.trim().length > 0
-      ? [
-          "Additional notes from controller/human:",
-          options.notesForAgent,
-          "",
-        ]
-      : [];
+    options.notesForAgent && options.notesForAgent.trim().length > 0 ? ["Additional notes from controller/human:", options.notesForAgent, ""] : [];
 
   const guidance = [
     "Guidance:",

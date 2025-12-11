@@ -1,0 +1,7 @@
+dist
+ui/dist
+node_modules
+ui/node_modules
+coverage
+*.log
+agent_schema.json

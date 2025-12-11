@@ -1,9 +1,5 @@
 import { z } from "zod";
-import {
-  OpenAPIRegistry,
-  OpenApiGeneratorV3,
-  extendZodWithOpenApi,
-} from "@asteasolutions/zod-to-openapi";
+import { OpenAPIRegistry, OpenApiGeneratorV3, extendZodWithOpenApi } from "@asteasolutions/zod-to-openapi";
 import {
   AgentOutputEnvelopeExecutionResultSchema,
   AgentOutputEnvelopePlanSchema,
@@ -26,8 +22,7 @@ export function generateOpenApiDocument() {
     info: {
       title: "AutoWorker API",
       version: "1.0.0",
-      description:
-        "API for managing tickets and agent outputs (requirements, plans, execution, QA) in AutoWorker.",
+      description: "API for managing tickets and agent outputs (requirements, plans, execution, QA) in AutoWorker.",
     },
     servers: [
       {
@@ -48,4 +43,3 @@ export {
   ErrorResponseSchema,
   PlanPayloadSchema,
 };
-

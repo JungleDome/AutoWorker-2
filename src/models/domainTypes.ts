@@ -67,9 +67,7 @@ export type QaCheckStatus = z.infer<typeof QaCheckStatusSchema>;
 
 export type RequirementsSource = z.infer<typeof RequirementsSourceSchema>;
 
-export type RequirementsClassification = z.infer<
-  typeof RequirementsClassificationSchema
->;
+export type RequirementsClassification = z.infer<typeof RequirementsClassificationSchema>;
 
 export type AcceptanceCriterion = z.infer<typeof AcceptanceCriterionSchema>;
 
@@ -83,21 +81,13 @@ export type ExecutionHandledStep = z.infer<typeof ExecutionHandledStepSchema>;
 
 export type PlanIssue = z.infer<typeof PlanIssueSchema>;
 
-export type ExecutionPlanFeedback = z.infer<
-  typeof ExecutionPlanFeedbackSchema
->;
+export type ExecutionPlanFeedback = z.infer<typeof ExecutionPlanFeedbackSchema>;
 
-export type ExecutionHumanReview = z.infer<
-  typeof ExecutionHumanReviewSchema
->;
+export type ExecutionHumanReview = z.infer<typeof ExecutionHumanReviewSchema>;
 
-export type ExecutionResultPayload = z.infer<
-  typeof ExecutionResultPayloadSchema
->;
+export type ExecutionResultPayload = z.infer<typeof ExecutionResultPayloadSchema>;
 
-export type QaTestedAcceptanceCriterion = z.infer<
-  typeof QaTestedAcceptanceCriterionSchema
->;
+export type QaTestedAcceptanceCriterion = z.infer<typeof QaTestedAcceptanceCriterionSchema>;
 
 export type QaCheck = z.infer<typeof QaCheckSchema>;
 
@@ -107,27 +97,16 @@ export type QaReportPayload = z.infer<typeof QaReportPayloadSchema>;
 
 export type TicketRecord = z.infer<typeof TicketRecordSchema>;
 
-export type AgentOutputEnvelopeBase = z.infer<
-  typeof AgentOutputEnvelopeBaseSchema
->;
+export type AgentOutputEnvelopeBase = z.infer<typeof AgentOutputEnvelopeBaseSchema>;
 
 export interface AgentOutputEnvelope<TPayload> extends AgentOutputEnvelopeBase {
   payload: TPayload;
 }
 
-export type AgentOutputEnvelopeRequirements = z.infer<
-  typeof AgentOutputEnvelopeRequirementsSchema
->;
+export type AgentOutputEnvelopeRequirements = z.infer<typeof AgentOutputEnvelopeRequirementsSchema>;
 
-export type AgentOutputEnvelopePlan = z.infer<
-  typeof AgentOutputEnvelopePlanSchema
->;
+export type AgentOutputEnvelopePlan = z.infer<typeof AgentOutputEnvelopePlanSchema>;
 
-export type AgentOutputEnvelopeExecutionResult = z.infer<
-  typeof AgentOutputEnvelopeExecutionResultSchema
->;
+export type AgentOutputEnvelopeExecutionResult = z.infer<typeof AgentOutputEnvelopeExecutionResultSchema>;
 
-export type AgentOutputEnvelopeQaReport = z.infer<
-  typeof AgentOutputEnvelopeQaReportSchema
->;
-
+export type AgentOutputEnvelopeQaReport = z.infer<typeof AgentOutputEnvelopeQaReportSchema>;

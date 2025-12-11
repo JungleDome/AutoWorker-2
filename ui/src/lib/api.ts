@@ -1,10 +1,4 @@
-import type {
-  ExecutionRequest,
-  PlanRequest,
-  QaRequest,
-  RequirementsRequest,
-  TicketRecord,
-} from "../types";
+import type { ExecutionRequest, PlanRequest, QaRequest, RequirementsRequest, TicketRecord } from "../types";
 
 async function request<T>(baseUrl: string, path: string, init?: RequestInit) {
   const response = await fetch(`${baseUrl}${path}`, {
@@ -26,10 +20,7 @@ export async function fetchTickets(baseUrl: string) {
 }
 
 export async function fetchTicket(baseUrl: string, ticketId: string) {
-  const data = await request<{ ticket: TicketRecord }>(
-    baseUrl,
-    `/api/tickets/${ticketId}`,
-  );
+  const data = await request<{ ticket: TicketRecord }>(baseUrl, `/api/tickets/${ticketId}`);
   return data.ticket;
 }
 
@@ -40,58 +31,34 @@ export async function createTicket(baseUrl: string, ticketId: string) {
   return data.ticket;
 }
 
-export async function runRequirements(
-  baseUrl: string,
-  ticketId: string,
-  payload: RequirementsRequest,
-) {
-  const data = await request<{ requirements: unknown }>(
-    baseUrl,
-    `/api/tickets/${ticketId}/requirements`,
-    {
-      method: "POST",
-      body: JSON.stringify(payload),
-    },
-  );
+export async function runRequirements(baseUrl: string, ticketId: string, payload: RequirementsRequest) {
+  const data = await request<{ requirements: unknown }>(baseUrl, `/api/tickets/${ticketId}/requirements`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
   return data.requirements;
 }
 
 export async function runPlan(baseUrl: string, ticketId: string, payload: PlanRequest) {
-  const data = await request<{ plan: unknown }>(
-    baseUrl,
-    `/api/tickets/${ticketId}/plan`,
-    {
-      method: "POST",
-      body: JSON.stringify(payload),
-    },
-  );
+  const data = await request<{ plan: unknown }>(baseUrl, `/api/tickets/${ticketId}/plan`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
   return data.plan;
 }
 
-export async function runExecution(
-  baseUrl: string,
-  ticketId: string,
-  payload: ExecutionRequest,
-) {
-  const data = await request<{ execution: unknown }>(
-    baseUrl,
-    `/api/tickets/${ticketId}/execute`,
-    {
-      method: "POST",
-      body: JSON.stringify(payload),
-    },
-  );
+export async function runExecution(baseUrl: string, ticketId: string, payload: ExecutionRequest) {
+  const data = await request<{ execution: unknown }>(baseUrl, `/api/tickets/${ticketId}/execute`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
   return data.execution;
 }
 
 export async function runQa(baseUrl: string, ticketId: string, payload: QaRequest) {
-  const data = await request<{ qa_report: unknown }>(
-    baseUrl,
-    `/api/tickets/${ticketId}/qa`,
-    {
-      method: "POST",
-      body: JSON.stringify(payload),
-    },
-  );
+  const data = await request<{ qa_report: unknown }>(baseUrl, `/api/tickets/${ticketId}/qa`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
   return data.qa_report;
 }

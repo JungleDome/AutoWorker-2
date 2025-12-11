@@ -23,12 +23,8 @@ function Header() {
       </div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">
-            Ticket orchestrator
-          </h1>
-          <p className="text-muted-foreground">
-            Create a ticket, dispatch agents, and inspect their outputs.
-          </p>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Ticket orchestrator</h1>
+          <p className="text-muted-foreground">Create a ticket, dispatch agents, and inspect their outputs.</p>
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Server className="h-4 w-4" />
@@ -51,15 +47,8 @@ function BaseUrlForm() {
       <CardContent className="space-y-3">
         <div className="grid gap-1">
           <Label htmlFor="api_base">Base URL</Label>
-          <Input
-            id="api_base"
-            value={value}
-            onChange={(event) => setValue(event.target.value)}
-            placeholder="http://localhost:3000"
-          />
-          <p className="text-xs text-muted-foreground">
-            Update this if your AutoWorker backend runs on a different host or port.
-          </p>
+          <Input id="api_base" value={value} onChange={(event) => setValue(event.target.value)} placeholder="http://localhost:3000" />
+          <p className="text-xs text-muted-foreground">Update this if your AutoWorker backend runs on a different host or port.</p>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -80,14 +69,10 @@ function BaseUrlForm() {
 }
 
 function TicketSidebar() {
-  const { tickets, selectedTicketId, selectTicket, ensureTicket, refreshTicket, loading } =
-    useTicketsStore();
+  const { tickets, selectedTicketId, selectTicket, ensureTicket, refreshTicket, loading } = useTicketsStore();
   const [newTicketId, setNewTicketId] = useState("");
 
-  const selectedTicket = useMemo(
-    () => tickets.find((ticket) => ticket.ticketId === selectedTicketId),
-    [tickets, selectedTicketId],
-  );
+  const selectedTicket = useMemo(() => tickets.find((ticket) => ticket.ticketId === selectedTicketId), [tickets, selectedTicketId]);
 
   return (
     <Card className="h-full">
@@ -102,12 +87,7 @@ function TicketSidebar() {
         <div className="flex flex-col gap-2">
           <Label htmlFor="ticket_id">Create or load ticket</Label>
           <div className="flex flex-col gap-2 sm:flex-row">
-            <Input
-              id="ticket_id"
-              placeholder="ticket-123"
-              value={newTicketId}
-              onChange={(event) => setNewTicketId(event.target.value)}
-            />
+            <Input id="ticket_id" placeholder="ticket-123" value={newTicketId} onChange={(event) => setNewTicketId(event.target.value)} />
             <Button
               disabled={!newTicketId}
               onClick={async () => {
@@ -134,25 +114,19 @@ function TicketSidebar() {
               <RefreshCw className="mr-2 h-4 w-4" /> Refresh
             </Button>
           </div>
-          {tickets.length === 0 && (
-            <p className="text-sm text-muted-foreground">No tickets yet.</p>
-          )}
+          {tickets.length === 0 && <p className="text-sm text-muted-foreground">No tickets yet.</p>}
           <div className="space-y-2">
             {tickets.map((ticket) => (
               <button
                 key={ticket.ticketId}
                 className={`flex w-full items-center justify-between rounded-md border px-3 py-2 text-left text-sm transition hover:border-primary/50 hover:bg-secondary ${
-                  ticket.ticketId === selectedTicket?.ticketId
-                    ? "border-primary bg-secondary"
-                    : "border-border"
+                  ticket.ticketId === selectedTicket?.ticketId ? "border-primary bg-secondary" : "border-border"
                 }`}
                 onClick={() => selectTicket(ticket.ticketId)}
               >
                 <div className="flex flex-col">
                   <span className="font-semibold text-foreground">{ticket.ticketId}</span>
-                  <span className="text-xs text-muted-foreground">
-                    Updated {new Date(ticket.updatedAt).toLocaleTimeString()}
-                  </span>
+                  <span className="text-xs text-muted-foreground">Updated {new Date(ticket.updatedAt).toLocaleTimeString()}</span>
                 </div>
                 <Badge variant="outline">{ticket.planHistory.length} plans</Badge>
               </button>
@@ -171,10 +145,7 @@ export default function App() {
     loadTickets();
   }, [loadTickets]);
 
-  const selectedTicket = useMemo(
-    () => tickets.find((ticket) => ticket.ticketId === selectedTicketId),
-    [tickets, selectedTicketId],
-  );
+  const selectedTicket = useMemo(() => tickets.find((ticket) => ticket.ticketId === selectedTicketId), [tickets, selectedTicketId]);
 
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6 lg:px-12">
@@ -194,9 +165,7 @@ export default function App() {
                 <CardHeader>
                   <CardTitle>No ticket selected</CardTitle>
                 </CardHeader>
-                <CardContent className="text-sm text-muted-foreground">
-                  Use the sidebar to create or select a ticket.
-                </CardContent>
+                <CardContent className="text-sm text-muted-foreground">Use the sidebar to create or select a ticket.</CardContent>
               </Card>
             )}
           </div>

@@ -12,11 +12,7 @@ function JsonViewer({ data }: { data?: unknown }) {
     return <p className="text-sm text-muted-foreground">No data yet</p>;
   }
 
-  return (
-    <pre className="rounded-md bg-slate-50 p-3 text-xs text-slate-800">
-      {JSON.stringify(data, null, 2)}
-    </pre>
-  );
+  return <pre className="rounded-md bg-slate-50 p-3 text-xs text-slate-800">{JSON.stringify(data, null, 2)}</pre>;
 }
 
 export function TicketDetails({ ticket }: TicketDetailsProps) {
