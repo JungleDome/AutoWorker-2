@@ -1,7 +1,15 @@
 # AutoWorker UI
 
-This folder is reserved for a future UI/frontend for AutoWorker.
+A Vite + React + TypeScript frontend for driving the AutoWorker backend agents. It uses
+Zustand for state management and shadcn/ui-inspired components built on Tailwind CSS.
 
-You can scaffold a client app here (for example a React/Vite project)
-and point it at the backend API exposed by `src/server.ts`.
+## Getting started
 
+```bash
+cd ui
+npm install
+npm run dev
+```
+
+By default the UI points at `http://localhost:3000`. You can update the API base URL from
+within the page header if your backend runs elsewhere.
