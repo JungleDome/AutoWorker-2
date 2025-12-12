@@ -1,20 +1,19 @@
 import { randomUUID } from "node:crypto";
 import type {
-  AgentOutputEnvelope,
-  ExecutionResultPayload,
-  PlanPayload,
-  QaReportPayload,
-  RequirementsPayload,
+  AgentOutputEnvelopeExecutionResult,
+  AgentOutputEnvelopePlan,
+  AgentOutputEnvelopeQaReport,
+  AgentOutputEnvelopeRequirements,
   TicketRecord,
 } from "./models/domainTypes.js";
 
 export interface AgentRunRecord {
   id: string;
   envelope:
-    | AgentOutputEnvelope<RequirementsPayload>
-    | AgentOutputEnvelope<PlanPayload>
-    | AgentOutputEnvelope<ExecutionResultPayload>
-    | AgentOutputEnvelope<QaReportPayload>;
+    | AgentOutputEnvelopeRequirements
+    | AgentOutputEnvelopePlan
+    | AgentOutputEnvelopeExecutionResult
+    | AgentOutputEnvelopeQaReport;
   raw: unknown;
   storedAt: string;
 }
@@ -37,6 +36,8 @@ export function upsertTicket(ticketId: string): TicketRecord {
     ticketId,
     createdAt: nowIso(),
     updatedAt: nowIso(),
+    latestRequirements: null,
+    latestPlan: null,
     planHistory: [],
     executionResults: [],
     qaReports: [],
@@ -60,7 +61,7 @@ export function getTicket(ticketId: string): TicketRecord | undefined {
 }
 
 export function recordRequirements(
-  envelope: AgentOutputEnvelope<RequirementsPayload>,
+  envelope: AgentOutputEnvelopeRequirements,
 ): TicketRecord {
   const ticket = upsertTicket(envelope.ticket_id);
   ticket.latestRequirements = envelope;
@@ -70,7 +71,7 @@ export function recordRequirements(
 }
 
 export function recordPlan(
-  envelope: AgentOutputEnvelope<PlanPayload>,
+  envelope: AgentOutputEnvelopePlan,
 ): TicketRecord {
   const ticket = upsertTicket(envelope.ticket_id);
   ticket.latestPlan = envelope;
@@ -81,7 +82,7 @@ export function recordPlan(
 }
 
 export function recordExecutionResult(
-  envelope: AgentOutputEnvelope<ExecutionResultPayload>,
+  envelope: AgentOutputEnvelopeExecutionResult,
 ): TicketRecord {
   const ticket = upsertTicket(envelope.ticket_id);
   ticket.executionResults.push(envelope);
@@ -91,7 +92,7 @@ export function recordExecutionResult(
 }
 
 export function recordQaReport(
-  envelope: AgentOutputEnvelope<QaReportPayload>,
+  envelope: AgentOutputEnvelopeQaReport,
 ): TicketRecord {
   const ticket = upsertTicket(envelope.ticket_id);
   ticket.qaReports.push(envelope);
@@ -110,10 +111,10 @@ export function getRun(id: string): AgentRunRecord | undefined {
 
 function persistRun(
   envelope:
-    | AgentOutputEnvelope<RequirementsPayload>
-    | AgentOutputEnvelope<PlanPayload>
-    | AgentOutputEnvelope<ExecutionResultPayload>
-    | AgentOutputEnvelope<QaReportPayload>,
+    | AgentOutputEnvelopeRequirements
+    | AgentOutputEnvelopePlan
+    | AgentOutputEnvelopeExecutionResult
+    | AgentOutputEnvelopeQaReport,
 ) {
   const id = randomUUID();
   const record: AgentRunRecord = {

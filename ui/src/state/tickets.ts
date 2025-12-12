@@ -1,3 +1,4 @@
+import { AgentOutputEnvelope, ExecutionResultPayload, PlanPayload, QaReportPayload, RequirementsPayload } from "@/models/domainTypes";
 import { create } from "zustand";
 
 export interface TicketRecord {
@@ -17,45 +18,6 @@ export interface TicketRecord {
   };
 }
 
-export interface RequirementsPayload {
-  summary: string;
-  acceptance_criteria: string[];
-  classification?: string;
-  sources?: string[];
-}
-
-export interface PlanStep {
-  id: string;
-  description: string;
-  status?: string;
-  kind?: string;
-}
-
-export interface PlanPayload {
-  summary: string;
-  steps: PlanStep[];
-  risks?: string[];
-}
-
-export interface ExecutionResultPayload {
-  summary: string;
-  handled_steps: PlanStep[];
-  human_reviews?: string[];
-}
-
-export interface QaReportPayload {
-  summary: string;
-  status: string;
-  checks?: { description: string; status: string }[];
-}
-
-export interface AgentOutputEnvelope<TPayload> {
-  ticket_id: string;
-  payload_type: string;
-  role: string;
-  payload: TPayload;
-  created_at?: string;
-}
 
 const API_BASE = (import.meta.env.VITE_API_BASE ?? "").replace(/\/$/, "");
 

@@ -13,11 +13,11 @@ import { runRequirementsForTicket } from "../agents/requirementsAgent.js";
 import { runImplementerForTicket } from "../agents/implementerAgent.js";
 import { runQaForTicket } from "../agents/qaAgent.js";
 import type {
-  AgentOutputEnvelope,
-  ExecutionResultPayload,
+  AgentOutputEnvelopeExecutionResult,
+  AgentOutputEnvelopePlan,
+  AgentOutputEnvelopeQaReport,
+  AgentOutputEnvelopeRequirements,
   PlanPayload,
-  QaReportPayload,
-  RequirementsPayload,
 } from "../models/domainTypes.js";
 import {
   registry,
@@ -258,7 +258,7 @@ export function registerRoutes(app: Express) {
     "/api/tickets/:ticketId/requirements/envelope",
     (req: Request, res: Response) => {
       const ticketId = req.params.ticketId;
-      const envelope = req.body as AgentOutputEnvelope<RequirementsPayload>;
+      const envelope = req.body as AgentOutputEnvelopeRequirements;
 
       if (!envelope || envelope.ticket_id !== ticketId) {
         res.status(400).json({
@@ -449,7 +449,7 @@ export function registerRoutes(app: Express) {
     "/api/tickets/:ticketId/plan/envelope",
     (req: Request, res: Response) => {
       const ticketId = req.params.ticketId;
-      const envelope = req.body as AgentOutputEnvelope<PlanPayload>;
+      const envelope = req.body as AgentOutputEnvelopePlan;
 
       if (!envelope || envelope.ticket_id !== ticketId) {
         res.status(400).json({
@@ -658,7 +658,7 @@ export function registerRoutes(app: Express) {
     "/api/tickets/:ticketId/execution/envelope",
     (req: Request, res: Response) => {
       const ticketId = req.params.ticketId;
-      const envelope = req.body as AgentOutputEnvelope<ExecutionResultPayload>;
+      const envelope = req.body as AgentOutputEnvelopeExecutionResult;
 
       if (!envelope || envelope.ticket_id !== ticketId) {
         res.status(400).json({
@@ -870,7 +870,7 @@ export function registerRoutes(app: Express) {
     "/api/tickets/:ticketId/qa/envelope",
     (req: Request, res: Response) => {
       const ticketId = req.params.ticketId;
-      const envelope = req.body as AgentOutputEnvelope<QaReportPayload>;
+      const envelope = req.body as AgentOutputEnvelopeQaReport;
 
       if (!envelope || envelope.ticket_id !== ticketId) {
         res.status(400).json({

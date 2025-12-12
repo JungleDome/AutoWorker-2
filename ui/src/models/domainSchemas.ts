@@ -31,12 +31,7 @@ export const PlanStepKindSchema = z.enum([
   "migration",
 ]);
 
-export const RiskLevelSchema = z.enum([
-  "low",
-  "medium",
-  "high",
-  "critical",
-]);
+export const RiskLevelSchema = z.enum(["low", "medium", "high", "critical"]);
 
 export const ComplexityLevelSchema = z.enum([
   "trivial",
@@ -86,11 +81,7 @@ export const PlanIssueCategorySchema = z.enum([
 
 export const QaStatusSchema = z.enum(["pass", "fail", "partial", "blocked"]);
 
-export const QaCheckStatusSchema = z.enum([
-  "pass",
-  "fail",
-  "not_run",
-]);
+export const QaCheckStatusSchema = z.enum(["pass", "fail", "not_run"]);
 
 export const RequirementsSourceSchema = z.object({
   raw_description: z.string(),
@@ -299,4 +290,5 @@ export const ErrorResponseSchema = z.object({
   error: z.string(),
 });
 
-export const AgentOutputEnvelopeBaseSchema = AgentOutputEnvelopeBaseSchemaInternal;
+export const AgentOutputEnvelopeBaseSchema =
+  AgentOutputEnvelopeBaseSchemaInternal;

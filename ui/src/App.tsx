@@ -15,7 +15,7 @@ function App() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card/60 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <div>
             <p className="text-xs uppercase tracking-wide text-muted-foreground">
               Autoworker
@@ -36,7 +36,7 @@ function App() {
           </Button>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-6 py-8">
+      <main className="mx-auto max-w-7xl px-6 py-8">
         <TicketDashboard />
       </main>
     </div>
