@@ -1,127 +1,103 @@
-import { randomUUID } from "node:crypto";
+import * as path from "node:path";
+import {
+  createInMemoryAdapter,
+} from "./persistence/inMemoryAdapter.js";
+import { createFileAdapter } from "./persistence/fileAdapter.js";
+import type {
+  AgentRunRecord,
+  ProjectUpsertInput,
+  StorageAdapter,
+  TicketFeedbackKind,
+} from "./persistence/storageAdapter.js";
 import type {
   AgentOutputEnvelopeExecutionResult,
   AgentOutputEnvelopePlan,
   AgentOutputEnvelopeQaReport,
   AgentOutputEnvelopeRequirements,
+  ProjectRecord,
   TicketRecord,
 } from "./models/domainTypes.js";
 
-export interface AgentRunRecord {
-  id: string;
-  envelope:
-    | AgentOutputEnvelopeRequirements
-    | AgentOutputEnvelopePlan
-    | AgentOutputEnvelopeExecutionResult
-    | AgentOutputEnvelopeQaReport;
-  raw: unknown;
-  storedAt: string;
-}
+export type { AgentRunRecord, ProjectUpsertInput, TicketFeedbackKind };
 
-const tickets = new Map<string, TicketRecord>();
-const runs = new Map<string, AgentRunRecord>();
+function createStorageAdapterFromEnv(): StorageAdapter {
+  const backend = (process.env.TICKET_STORAGE ?? "file").toLowerCase();
 
-function nowIso(): string {
-  return new Date().toISOString();
-}
-
-export function upsertTicket(ticketId: string): TicketRecord {
-  const existing = tickets.get(ticketId);
-  if (existing) {
-    existing.updatedAt = nowIso();
-    return existing;
+  if (backend === "memory" || backend === "inmemory" || backend === "in-memory") {
+    return createInMemoryAdapter();
   }
 
-  const created: TicketRecord = {
-    ticketId,
-    createdAt: nowIso(),
-    updatedAt: nowIso(),
-    latestRequirements: null,
-    latestPlan: null,
-    planHistory: [],
-    executionResults: [],
-    qaReports: [],
-    feedback: {
-      requirements: [],
-      plan: [],
-      execution: [],
-      qa: [],
-    },
-  };
-  tickets.set(ticketId, created);
-  return created;
+  const rootDir = process.env.TICKET_STORAGE_DIR
+    ? path.resolve(process.env.TICKET_STORAGE_DIR)
+    : path.resolve(process.cwd(), "docs_ticket");
+
+  return createFileAdapter({ rootDir });
+}
+
+const adapter = createStorageAdapterFromEnv();
+
+export function listProjects(): ProjectRecord[] {
+  return adapter.listProjects();
+}
+
+export function getProject(projectId: string): ProjectRecord | undefined {
+  return adapter.getProject(projectId);
+}
+
+export function upsertProject(
+  projectId: string,
+  input: ProjectUpsertInput,
+): ProjectRecord {
+  return adapter.upsertProject(projectId, input);
+}
+
+export function upsertTicket(
+  ticketId: string,
+  options?: { projectId?: string },
+): TicketRecord {
+  return adapter.upsertTicket(ticketId, options);
 }
 
 export function listTickets(): TicketRecord[] {
-  return Array.from(tickets.values());
+  return adapter.listTickets();
 }
 
 export function getTicket(ticketId: string): TicketRecord | undefined {
-  return tickets.get(ticketId);
+  return adapter.getTicket(ticketId);
+}
+
+export function appendTicketFeedback(
+  ticketId: string,
+  kind: TicketFeedbackKind,
+  note: string,
+): TicketRecord {
+  return adapter.appendTicketFeedback(ticketId, kind, note);
 }
 
 export function recordRequirements(
   envelope: AgentOutputEnvelopeRequirements,
 ): TicketRecord {
-  const ticket = upsertTicket(envelope.ticket_id);
-  ticket.latestRequirements = envelope;
-  ticket.updatedAt = nowIso();
-  persistRun(envelope);
-  return ticket;
+  return adapter.recordRequirements(envelope);
 }
 
-export function recordPlan(
-  envelope: AgentOutputEnvelopePlan,
-): TicketRecord {
-  const ticket = upsertTicket(envelope.ticket_id);
-  ticket.latestPlan = envelope;
-  ticket.planHistory.push(envelope);
-  ticket.updatedAt = nowIso();
-  persistRun(envelope);
-  return ticket;
+export function recordPlan(envelope: AgentOutputEnvelopePlan): TicketRecord {
+  return adapter.recordPlan(envelope);
 }
 
 export function recordExecutionResult(
   envelope: AgentOutputEnvelopeExecutionResult,
 ): TicketRecord {
-  const ticket = upsertTicket(envelope.ticket_id);
-  ticket.executionResults.push(envelope);
-  ticket.updatedAt = nowIso();
-  persistRun(envelope);
-  return ticket;
+  return adapter.recordExecutionResult(envelope);
 }
 
-export function recordQaReport(
-  envelope: AgentOutputEnvelopeQaReport,
-): TicketRecord {
-  const ticket = upsertTicket(envelope.ticket_id);
-  ticket.qaReports.push(envelope);
-  ticket.updatedAt = nowIso();
-  persistRun(envelope);
-  return ticket;
+export function recordQaReport(envelope: AgentOutputEnvelopeQaReport): TicketRecord {
+  return adapter.recordQaReport(envelope);
 }
 
 export function listRuns(): AgentRunRecord[] {
-  return Array.from(runs.values());
+  return adapter.listRuns();
 }
 
 export function getRun(id: string): AgentRunRecord | undefined {
-  return runs.get(id);
-}
-
-function persistRun(
-  envelope:
-    | AgentOutputEnvelopeRequirements
-    | AgentOutputEnvelopePlan
-    | AgentOutputEnvelopeExecutionResult
-    | AgentOutputEnvelopeQaReport,
-) {
-  const id = randomUUID();
-  const record: AgentRunRecord = {
-    id,
-    envelope,
-    raw: envelope,
-    storedAt: nowIso(),
-  };
-  runs.set(id, record);
+  return adapter.getRun(id);
 }

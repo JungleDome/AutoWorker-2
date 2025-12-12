@@ -3,6 +3,7 @@ import { create } from "zustand";
 
 export interface TicketRecord {
   ticketId: string;
+  projectId: string;
   createdAt: string;
   updatedAt: string;
   latestRequirements?: AgentOutputEnvelope<RequirementsPayload>;

@@ -1,5 +1,6 @@
-﻿import { useMemo, useState, type ReactNode } from "react";
+﻿import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTicketStore, type TicketRecord } from "@/state/tickets";
+import { useProjectStore } from "@/state/projects";
 import {
   Card,
   CardContent,
@@ -35,6 +36,9 @@ function TicketListItem({ ticket, isSelected, onSelect }: TicketListItemProps) {
         </div>
         <p className="truncate text-xs text-muted-foreground">
           Updated {new Date(ticket.updatedAt).toLocaleString()}
+        </p>
+        <p className="truncate text-xs text-muted-foreground">
+          Project {ticket.projectId}
         </p>
       </div>
       <Badge variant={ticket.latestRequirements ? "default" : "muted"}>
@@ -110,6 +114,31 @@ interface TicketDetailProps {
 }
 
 function TicketDetail({ ticket, onCaptureRequirements, busy }: TicketDetailProps) {
+  const project = useProjectStore(
+    (state) => state.projectsById[ticket.projectId],
+  );
+  const projectLoading = useProjectStore((state) => state.loading);
+  const projectError = useProjectStore((state) => state.error);
+  const loadProject = useProjectStore((state) => state.loadProject);
+  const upsertProject = useProjectStore((state) => state.upsertProject);
+
+  const [projectName, setProjectName] = useState("");
+  const [workingDirectory, setWorkingDirectory] = useState("");
+
+  useEffect(() => {
+    void loadProject(ticket.projectId);
+  }, [loadProject, ticket.projectId]);
+
+  useEffect(() => {
+    if (!project) {
+      setProjectName(ticket.projectId);
+      setWorkingDirectory("");
+      return;
+    }
+    setProjectName(project.name);
+    setWorkingDirectory(project.workingDirectory);
+  }, [project, ticket.projectId]);
+
   const [description, setDescription] = useState("");
   const [notes, setNotes] = useState("");
   const [activeTab, setActiveTab] = useState<DetailTabKey>(
@@ -296,7 +325,62 @@ function TicketDetail({ ticket, onCaptureRequirements, busy }: TicketDetailProps
             />
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-6">
+          <CollapsibleSection
+            title="Project"
+            subtitle={project ? project.name : `Project ${ticket.projectId}`}
+            defaultOpen={false}
+          >
+            <div className="space-y-4">
+              {projectError && (
+                <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                  {projectError}
+                </div>
+              )}
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Project name</Label>
+                  <Input
+                    value={projectName}
+                    onChange={(event) => setProjectName(event.target.value)}
+                    disabled={projectLoading}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Working directory</Label>
+                  <Input
+                    value={workingDirectory}
+                    onChange={(event) => setWorkingDirectory(event.target.value)}
+                    placeholder="e.g. D:\\Projects\\MyRepo"
+                    disabled={projectLoading}
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={projectLoading || !workingDirectory.trim()}
+                  onClick={() =>
+                    void upsertProject(ticket.projectId, {
+                      name: projectName.trim() || ticket.projectId,
+                      workingDirectory: workingDirectory.trim(),
+                    })
+                  }
+                >
+                  Save project
+                </Button>
+                {project && (
+                  <span className="text-xs text-muted-foreground">
+                    Updated {new Date(project.updatedAt).toLocaleString()}
+                  </span>
+                )}
+              </div>
+            </div>
+          </CollapsibleSection>
+
           {activeTab === "requirements" && (
             <div className="space-y-4">
               {requirementsPayload ? (

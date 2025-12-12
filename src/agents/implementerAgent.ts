@@ -23,6 +23,7 @@ export interface ImplementerRunOptions {
   plan: PlanPayload;
   stepIds?: string[];
   notesForAgent?: string;
+  workingDirectory?: string;
 }
 
 export async function runImplementerForTicket(
@@ -32,10 +33,12 @@ export async function runImplementerForTicket(
     model: config.codex.model,
     sandboxMode: config.codex.sandboxMode as SandboxMode | undefined,
     approvalPolicy: config.codex.approvalPolicy as ApprovalMode | undefined,
-    workingDirectory: config.codex.workingDirectory ?? process.cwd(),
+    workingDirectory:
+      options.workingDirectory ?? config.codex.workingDirectory ?? process.cwd(),
     skipGitRepoCheck: true,
     networkAccessEnabled: config.codex.networkAccessEnabled,
     webSearchEnabled: config.codex.webSearchEnabled,
+    modelReasoningEffort: "high"
   });
 
   const instructions = buildImplementerPrompt(options);

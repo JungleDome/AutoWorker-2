@@ -22,6 +22,7 @@ import {
   PlanStepSchema,
   PlanStepStatusSchema,
   PriorityLevelSchema,
+  ProjectRecordSchema,
   QaCheckSchema,
   QaCheckStatusSchema,
   QaIssueSchema,
@@ -102,6 +103,8 @@ export type QaIssue = z.infer<typeof QaIssueSchema>;
 export type QaReportPayload = z.infer<typeof QaReportPayloadSchema>;
 
 export type TicketRecord = z.infer<typeof TicketRecordSchema>;
+
+export type ProjectRecord = z.infer<typeof ProjectRecordSchema>;
 
 export type AgentOutputEnvelopeBase = z.infer<
   typeof AgentOutputEnvelopeBaseSchema

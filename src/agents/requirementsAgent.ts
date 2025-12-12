@@ -20,6 +20,7 @@ export interface RequirementsRunOptions {
   ticketId: string;
   rawTicketDescription: string;
   notesForAgent?: string;
+  workingDirectory?: string;
 }
 
 export async function runRequirementsForTicket(
@@ -29,7 +30,8 @@ export async function runRequirementsForTicket(
     model: config.codex.model,
     sandboxMode: config.codex.sandboxMode as SandboxMode | undefined,
     approvalPolicy: config.codex.approvalPolicy as ApprovalMode | undefined,
-    workingDirectory: config.codex.workingDirectory ?? process.cwd(),
+    workingDirectory:
+      options.workingDirectory ?? config.codex.workingDirectory ?? process.cwd(),
     skipGitRepoCheck: true,
     networkAccessEnabled: config.codex.networkAccessEnabled,
     webSearchEnabled: config.codex.webSearchEnabled,

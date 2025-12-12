@@ -11,6 +11,7 @@ import {
   AgentOutputEnvelopeRequirementsSchema,
   ErrorResponseSchema,
   PlanPayloadSchema,
+  ProjectRecordSchema,
   TicketRecordSchema,
 } from "../models/domainSchemas.js";
 
@@ -40,6 +41,7 @@ export function generateOpenApiDocument() {
 
 export {
   z,
+  ProjectRecordSchema,
   TicketRecordSchema,
   AgentOutputEnvelopeRequirementsSchema,
   AgentOutputEnvelopePlanSchema,
@@ -48,4 +50,3 @@ export {
   ErrorResponseSchema,
   PlanPayloadSchema,
 };
-

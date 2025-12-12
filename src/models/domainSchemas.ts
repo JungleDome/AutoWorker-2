@@ -278,8 +278,17 @@ export const AgentOutputEnvelopeQaReportSchema =
     payload: QaReportPayloadSchema,
   });
 
+export const ProjectRecordSchema = z.object({
+  projectId: z.string(),
+  name: z.string(),
+  workingDirectory: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
 export const TicketRecordSchema = z.object({
   ticketId: z.string(),
+  projectId: z.string(),
   createdAt: z.string(),
   updatedAt: z.string(),
   latestRequirements: AgentOutputEnvelopeRequirementsSchema.nullable(),
