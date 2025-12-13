@@ -1,12 +1,17 @@
 import { Codex, type ApprovalMode, type SandboxMode } from "@openai/codex-sdk";
 import { config } from "../config.js";
+import {
+  AgentOutputEnvelopeExecutionResultSchema,
+} from "../models/domainSchemas.js";
 import type {
-  AgentOutputEnvelope,
+  AgentOutputEnvelopeExecutionResult,
   AgentRole,
-  ExecutionResultPayload,
   PlanPayload,
   PlanStep,
 } from "../models/domainTypes.js";
+import {
+  ExecutionResultOutputSchemaStrict,
+} from "../models/outputSchemas.js";
 import { recordExecutionResult } from "../storage.js";
 
 const IMPLEMENTER_ROLE: AgentRole = "Implementer (Software Engineer)";
@@ -18,33 +23,52 @@ export interface ImplementerRunOptions {
   plan: PlanPayload;
   stepIds?: string[];
   notesForAgent?: string;
+  workingDirectory?: string;
 }
 
 export async function runImplementerForTicket(
   options: ImplementerRunOptions,
-): Promise<AgentOutputEnvelope<ExecutionResultPayload>> {
+): Promise<AgentOutputEnvelopeExecutionResult> {
   const thread = codex.startThread({
     model: config.codex.model,
     sandboxMode: config.codex.sandboxMode as SandboxMode | undefined,
     approvalPolicy: config.codex.approvalPolicy as ApprovalMode | undefined,
-    workingDirectory: config.codex.workingDirectory ?? process.cwd(),
+    workingDirectory:
+      options.workingDirectory ?? config.codex.workingDirectory ?? process.cwd(),
     skipGitRepoCheck: true,
     networkAccessEnabled: config.codex.networkAccessEnabled,
     webSearchEnabled: config.codex.webSearchEnabled,
+    modelReasoningEffort: "high"
   });
 
   const instructions = buildImplementerPrompt(options);
 
-  const turn = await thread.run(instructions);
+  const turn = await thread.run(instructions, {
+    outputSchema: ExecutionResultOutputSchemaStrict,
+  });
 
-  let envelope: AgentOutputEnvelope<ExecutionResultPayload>;
+  const raw = turn.finalResponse;
+  let parsed: unknown = raw;
+
+  if (typeof raw === "string") {
+    try {
+      parsed = JSON.parse(raw);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unknown parse error";
+      throw new Error(`Failed to parse execution output as JSON: ${message}`);
+    }
+  }
+
+  let envelope: AgentOutputEnvelopeExecutionResult;
   try {
-    envelope =
-      JSON.parse(turn.finalResponse) as AgentOutputEnvelope<ExecutionResultPayload>;
+    envelope = AgentOutputEnvelopeExecutionResultSchema.parse(parsed);
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Unknown parse error";
-    throw new Error(`Failed to parse execution output as JSON: ${message}`);
+      error instanceof Error ? error.message : "Unknown validation error";
+    throw new Error(
+      `Implementer agent output failed schema validation: ${message}`,
+    );
   }
 
   if (envelope.payload_type !== "execution_result") {

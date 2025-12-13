@@ -1,11 +1,16 @@
 import type { Express, Request, Response } from "express";
+import { config } from "../config.js";
 import {
+  appendTicketFeedback,
   getTicket,
+  getProject,
   listTickets,
+  listProjects,
   recordExecutionResult,
   recordPlan,
   recordQaReport,
   recordRequirements,
+  upsertProject,
   upsertTicket,
 } from "../storage.js";
 import { runPlannerForTicket } from "../agents/plannerAgent.js";
@@ -13,15 +18,16 @@ import { runRequirementsForTicket } from "../agents/requirementsAgent.js";
 import { runImplementerForTicket } from "../agents/implementerAgent.js";
 import { runQaForTicket } from "../agents/qaAgent.js";
 import type {
-  AgentOutputEnvelope,
-  ExecutionResultPayload,
+  AgentOutputEnvelopeExecutionResult,
+  AgentOutputEnvelopePlan,
+  AgentOutputEnvelopeQaReport,
+  AgentOutputEnvelopeRequirements,
   PlanPayload,
-  QaReportPayload,
-  RequirementsPayload,
 } from "../models/domainTypes.js";
 import {
   registry,
   z,
+  ProjectRecordSchema,
   TicketRecordSchema,
   AgentOutputEnvelopeRequirementsSchema,
   AgentOutputEnvelopePlanSchema,
@@ -51,6 +57,17 @@ const QaBodySchema = z.object({
   notes_for_agent: z.string().optional(),
 });
 
+const ProjectUpsertBodySchema = z.object({
+  name: z.string().optional(),
+  workingDirectory: z.string().optional(),
+});
+
+const TicketUpsertBodySchema = z.object({
+  projectId: z.string().optional(),
+  projectName: z.string().optional(),
+  workingDirectory: z.string().optional(),
+});
+
 export function registerRoutes(app: Express) {
   // Health
   app.get("/health", (_req: Request, res: Response) => {
@@ -70,6 +87,128 @@ export function registerRoutes(app: Express) {
             schema: z.object({
               status: z.string().openapi({ example: "ok" }),
             }),
+          },
+        },
+      },
+    },
+  });
+
+  // Projects listing
+  app.get("/api/projects", (_req: Request, res: Response) => {
+    res.json({ projects: listProjects() });
+  });
+
+  registry.registerPath({
+    method: "get",
+    path: "/api/projects",
+    tags: ["Projects"],
+    summary: "List projects",
+    responses: {
+      200: {
+        description: "List of projects",
+        content: {
+          "application/json": {
+            schema: z.object({
+              projects: z.array(ProjectRecordSchema),
+            }),
+          },
+        },
+      },
+    },
+  });
+
+  // Get project
+  app.get("/api/projects/:projectId", (req: Request, res: Response) => {
+    const projectId = req.params.projectId;
+    const project = getProject(projectId);
+    if (!project) {
+      res.status(404).json({ error: "Project not found" });
+      return;
+    }
+    res.json({ project });
+  });
+
+  registry.registerPath({
+    method: "get",
+    path: "/api/projects/{projectId}",
+    tags: ["Projects"],
+    summary: "Get project by ID",
+    request: {
+      params: z.object({
+        projectId: z.string(),
+      }),
+    },
+    responses: {
+      200: {
+        description: "Project details",
+        content: {
+          "application/json": {
+            schema: z.object({
+              project: ProjectRecordSchema,
+            }),
+          },
+        },
+      },
+      404: {
+        description: "Project not found",
+        content: {
+          "application/json": {
+            schema: ErrorResponseSchema,
+          },
+        },
+      },
+    },
+  });
+
+  // Create or update project
+  app.post("/api/projects/:projectId", (req: Request, res: Response) => {
+    const projectId = req.params.projectId;
+    const parseResult = ProjectUpsertBodySchema.safeParse(req.body ?? {});
+    if (!parseResult.success) {
+      res.status(400).json({ error: "Invalid request body" });
+      return;
+    }
+
+    const project = upsertProject(projectId, {
+      name: parseResult.data.name,
+      workingDirectory: parseResult.data.workingDirectory,
+    });
+    res.status(201).json({ project });
+  });
+
+  registry.registerPath({
+    method: "post",
+    path: "/api/projects/{projectId}",
+    tags: ["Projects"],
+    summary: "Create or update a project",
+    request: {
+      params: z.object({
+        projectId: z.string(),
+      }),
+      body: {
+        content: {
+          "application/json": {
+            schema: ProjectUpsertBodySchema,
+          },
+        },
+      },
+    },
+    responses: {
+      201: {
+        description: "Project created or updated",
+        content: {
+          "application/json": {
+            schema: z.object({
+              project: ProjectRecordSchema,
+            }),
+          },
+        },
+      },
+      400: {
+        description: "Invalid request body",
+        content: {
+          "application/json": {
+            schema: ErrorResponseSchema,
           },
         },
       },
@@ -103,7 +242,22 @@ export function registerRoutes(app: Express) {
   // Ensure ticket exists
   app.post("/api/tickets/:ticketId", (req: Request, res: Response) => {
     const ticketId = req.params.ticketId;
-    const ticket = upsertTicket(ticketId);
+    const parseResult = TicketUpsertBodySchema.safeParse(req.body ?? {});
+    if (!parseResult.success) {
+      res.status(400).json({ error: "Invalid request body" });
+      return;
+    }
+
+    const projectId = parseResult.data.projectId ?? ticketId;
+    upsertProject(projectId, {
+      name: parseResult.data.projectName ?? projectId,
+      workingDirectory:
+        parseResult.data.workingDirectory ??
+        config.codex.workingDirectory ??
+        process.cwd(),
+    });
+
+    const ticket = upsertTicket(ticketId, { projectId });
     res.status(201).json({ ticket });
   });
 
@@ -116,6 +270,13 @@ export function registerRoutes(app: Express) {
       params: z.object({
         ticketId: z.string(),
       }),
+      body: {
+        content: {
+          "application/json": {
+            schema: TicketUpsertBodySchema,
+          },
+        },
+      },
     },
     responses: {
       201: {
@@ -188,8 +349,14 @@ export function registerRoutes(app: Express) {
       const { raw_description, notes_for_agent } = parseResult.data;
 
       const ticket = upsertTicket(ticketId);
+      const project =
+        getProject(ticket.projectId) ??
+        upsertProject(ticket.projectId, {
+          name: ticket.projectId,
+          workingDirectory: config.codex.workingDirectory ?? process.cwd(),
+        });
       if (notes_for_agent && notes_for_agent.trim()) {
-        ticket.feedback.requirements.push(notes_for_agent.trim());
+        appendTicketFeedback(ticketId, "requirements", notes_for_agent.trim());
       }
 
       try {
@@ -197,6 +364,7 @@ export function registerRoutes(app: Express) {
           ticketId,
           rawTicketDescription: raw_description,
           notesForAgent: notes_for_agent ?? undefined,
+          workingDirectory: project.workingDirectory,
         });
         res.json({ requirements: envelope });
       } catch (error) {
@@ -258,7 +426,7 @@ export function registerRoutes(app: Express) {
     "/api/tickets/:ticketId/requirements/envelope",
     (req: Request, res: Response) => {
       const ticketId = req.params.ticketId;
-      const envelope = req.body as AgentOutputEnvelope<RequirementsPayload>;
+      const envelope = req.body as AgentOutputEnvelopeRequirements;
 
       if (!envelope || envelope.ticket_id !== ticketId) {
         res.status(400).json({
@@ -381,14 +549,21 @@ export function registerRoutes(app: Express) {
       }
 
       if (notes_for_agent && notes_for_agent.trim()) {
-        ticket.feedback.plan.push(notes_for_agent.trim());
+        appendTicketFeedback(ticketId, "plan", notes_for_agent.trim());
       }
 
       try {
+        const project =
+          getProject(ticket.projectId) ??
+          upsertProject(ticket.projectId, {
+            name: ticket.projectId,
+            workingDirectory: config.codex.workingDirectory ?? process.cwd(),
+          });
         const envelope = await runPlannerForTicket({
           ticketId,
           requirements: ticket.latestRequirements,
           notesForAgent: notes_for_agent ?? undefined,
+          workingDirectory: project.workingDirectory,
         });
         res.json({ plan: envelope });
       } catch (error) {
@@ -449,7 +624,7 @@ export function registerRoutes(app: Express) {
     "/api/tickets/:ticketId/plan/envelope",
     (req: Request, res: Response) => {
       const ticketId = req.params.ticketId;
-      const envelope = req.body as AgentOutputEnvelope<PlanPayload>;
+      const envelope = req.body as AgentOutputEnvelopePlan;
 
       if (!envelope || envelope.ticket_id !== ticketId) {
         res.status(400).json({
@@ -591,11 +766,18 @@ export function registerRoutes(app: Express) {
       const stepIdsArray: string[] | undefined = step_ids;
 
       try {
+        const project =
+          getProject(ticket.projectId) ??
+          upsertProject(ticket.projectId, {
+            name: ticket.projectId,
+            workingDirectory: config.codex.workingDirectory ?? process.cwd(),
+          });
         const envelope = await runImplementerForTicket({
           ticketId,
           plan: planEnvelope.payload as PlanPayload,
           stepIds: stepIdsArray,
           notesForAgent: notes_for_agent ?? undefined,
+          workingDirectory: project.workingDirectory,
         });
         res.json({ execution: envelope });
       } catch (error) {
@@ -658,7 +840,7 @@ export function registerRoutes(app: Express) {
     "/api/tickets/:ticketId/execution/envelope",
     (req: Request, res: Response) => {
       const ticketId = req.params.ticketId;
-      const envelope = req.body as AgentOutputEnvelope<ExecutionResultPayload>;
+      const envelope = req.body as AgentOutputEnvelopeExecutionResult;
 
       if (!envelope || envelope.ticket_id !== ticketId) {
         res.status(400).json({
@@ -785,7 +967,7 @@ export function registerRoutes(app: Express) {
         : [ticket.latestPlan];
 
       if (notes_for_agent && notes_for_agent.trim()) {
-        ticket.feedback.qa.push(notes_for_agent.trim());
+        appendTicketFeedback(ticketId, "qa", notes_for_agent.trim());
       }
 
       const effectivePlanId =
@@ -805,11 +987,18 @@ export function registerRoutes(app: Express) {
       }
 
       try {
+        const project =
+          getProject(ticket.projectId) ??
+          upsertProject(ticket.projectId, {
+            name: ticket.projectId,
+            workingDirectory: config.codex.workingDirectory ?? process.cwd(),
+          });
         const envelope = await runQaForTicket({
           ticketId,
           plan: planEnvelope.payload as PlanPayload,
           executionResults: ticket.executionResults,
           notesForAgent: notes_for_agent ?? undefined,
+          workingDirectory: project.workingDirectory,
         });
         res.json({ qa_report: envelope });
       } catch (error) {
@@ -870,7 +1059,7 @@ export function registerRoutes(app: Express) {
     "/api/tickets/:ticketId/qa/envelope",
     (req: Request, res: Response) => {
       const ticketId = req.params.ticketId;
-      const envelope = req.body as AgentOutputEnvelope<QaReportPayload>;
+      const envelope = req.body as AgentOutputEnvelopeQaReport;
 
       if (!envelope || envelope.ticket_id !== ticketId) {
         res.status(400).json({

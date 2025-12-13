@@ -1,10 +1,15 @@
 import { Codex, type ApprovalMode, type SandboxMode } from "@openai/codex-sdk";
 import { config } from "../config.js";
+import {
+  AgentOutputEnvelopeRequirementsSchema,
+} from "../models/domainSchemas.js";
 import type {
-  AgentOutputEnvelope,
+  AgentOutputEnvelopeRequirements,
   AgentRole,
-  RequirementsPayload,
 } from "../models/domainTypes.js";
+import {
+  RequirementsOutputSchemaStrict,
+} from "../models/outputSchemas.js";
 import { recordRequirements } from "../storage.js";
 
 const REQUIREMENTS_ROLE: AgentRole = "Request Owner (Product Manager)";
@@ -15,16 +20,18 @@ export interface RequirementsRunOptions {
   ticketId: string;
   rawTicketDescription: string;
   notesForAgent?: string;
+  workingDirectory?: string;
 }
 
 export async function runRequirementsForTicket(
   options: RequirementsRunOptions,
-): Promise<AgentOutputEnvelope<RequirementsPayload>> {
+): Promise<AgentOutputEnvelopeRequirements> {
   const thread = codex.startThread({
     model: config.codex.model,
     sandboxMode: config.codex.sandboxMode as SandboxMode | undefined,
     approvalPolicy: config.codex.approvalPolicy as ApprovalMode | undefined,
-    workingDirectory: config.codex.workingDirectory ?? process.cwd(),
+    workingDirectory:
+      options.workingDirectory ?? config.codex.workingDirectory ?? process.cwd(),
     skipGitRepoCheck: true,
     networkAccessEnabled: config.codex.networkAccessEnabled,
     webSearchEnabled: config.codex.webSearchEnabled,
@@ -32,16 +39,34 @@ export async function runRequirementsForTicket(
 
   const instructions = buildRequirementsPrompt(options);
 
-  const turn = await thread.run(instructions);
+  const turn = await thread.run(instructions, {
+    outputSchema: RequirementsOutputSchemaStrict,
+  });
 
-  let envelope: AgentOutputEnvelope<RequirementsPayload>;
+  const raw = turn.finalResponse;
+  let parsed: unknown = raw;
+
+  if (typeof raw === "string") {
+    try {
+      parsed = JSON.parse(raw);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unknown parse error";
+      throw new Error(
+        `Failed to parse requirements output as JSON: ${message}`,
+      );
+    }
+  }
+
+  let envelope: AgentOutputEnvelopeRequirements;
   try {
-    envelope =
-      JSON.parse(turn.finalResponse) as AgentOutputEnvelope<RequirementsPayload>;
+    envelope = AgentOutputEnvelopeRequirementsSchema.parse(parsed);
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Unknown parse error";
-    throw new Error(`Failed to parse requirements output as JSON: ${message}`);
+      error instanceof Error ? error.message : "Unknown validation error";
+    throw new Error(
+      `Requirements agent output failed schema validation: ${message}`,
+    );
   }
 
   if (envelope.payload_type !== "requirements") {

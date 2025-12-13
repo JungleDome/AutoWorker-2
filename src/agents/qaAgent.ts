@@ -1,12 +1,15 @@
 import { Codex, type ApprovalMode, type SandboxMode } from "@openai/codex-sdk";
 import { config } from "../config.js";
+import {
+  AgentOutputEnvelopeQaReportSchema,
+} from "../models/domainSchemas.js";
 import type {
-  AgentOutputEnvelope,
+  AgentOutputEnvelopeExecutionResult,
+  AgentOutputEnvelopeQaReport,
   AgentRole,
-  ExecutionResultPayload,
   PlanPayload,
-  QaReportPayload,
 } from "../models/domainTypes.js";
+import { QaReportOutputSchemaStrict } from "../models/outputSchemas.js";
 import { recordQaReport } from "../storage.js";
 
 const QA_ROLE: AgentRole = "QA Specialist (QA Engineer)";
@@ -16,18 +19,20 @@ const codex = new Codex();
 export interface QaRunOptions {
   ticketId: string;
   plan: PlanPayload;
-  executionResults: AgentOutputEnvelope<ExecutionResultPayload>[];
+  executionResults: AgentOutputEnvelopeExecutionResult[];
   notesForAgent?: string;
+  workingDirectory?: string;
 }
 
 export async function runQaForTicket(
   options: QaRunOptions,
-): Promise<AgentOutputEnvelope<QaReportPayload>> {
+): Promise<AgentOutputEnvelopeQaReport> {
   const thread = codex.startThread({
     model: config.codex.model,
     sandboxMode: config.codex.sandboxMode as SandboxMode | undefined,
     approvalPolicy: config.codex.approvalPolicy as ApprovalMode | undefined,
-    workingDirectory: config.codex.workingDirectory ?? process.cwd(),
+    workingDirectory:
+      options.workingDirectory ?? config.codex.workingDirectory ?? process.cwd(),
     skipGitRepoCheck: true,
     networkAccessEnabled: config.codex.networkAccessEnabled,
     webSearchEnabled: config.codex.webSearchEnabled,
@@ -35,16 +40,32 @@ export async function runQaForTicket(
 
   const instructions = buildQaPrompt(options);
 
-  const turn = await thread.run(instructions);
+  const turn = await thread.run(instructions, {
+    outputSchema: QaReportOutputSchemaStrict,
+  });
 
-  let envelope: AgentOutputEnvelope<QaReportPayload>;
+  const raw = turn.finalResponse;
+  let parsed: unknown = raw;
+
+  if (typeof raw === "string") {
+    try {
+      parsed = JSON.parse(raw);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unknown parse error";
+      throw new Error(`Failed to parse QA output as JSON: ${message}`);
+    }
+  }
+
+  let envelope: AgentOutputEnvelopeQaReport;
   try {
-    envelope =
-      JSON.parse(turn.finalResponse) as AgentOutputEnvelope<QaReportPayload>;
+    envelope = AgentOutputEnvelopeQaReportSchema.parse(parsed);
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Unknown parse error";
-    throw new Error(`Failed to parse QA output as JSON: ${message}`);
+      error instanceof Error ? error.message : "Unknown validation error";
+    throw new Error(
+      `QA agent output failed schema validation: ${message}`,
+    );
   }
 
   if (envelope.payload_type !== "qa_report") {

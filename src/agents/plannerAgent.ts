@@ -1,11 +1,15 @@
 import { Codex, type ApprovalMode, type SandboxMode } from "@openai/codex-sdk";
 import { config } from "../config.js";
+import {
+  AgentOutputEnvelopePlanSchema,
+} from "../models/domainSchemas.js";
 import type {
-  AgentOutputEnvelope,
+  AgentOutputEnvelopePlan,
+  AgentOutputEnvelopeRequirements,
   AgentRole,
-  PlanPayload,
   RequirementsPayload,
 } from "../models/domainTypes.js";
+import { PlanOutputSchemaStrict } from "../models/outputSchemas.js";
 import { recordPlan } from "../storage.js";
 
 const PLANNER_ROLE: AgentRole = "Planner (Tech Lead)";
@@ -14,35 +18,54 @@ const codex = new Codex();
 
 export interface PlannerRunOptions {
   ticketId: string;
-  requirements: AgentOutputEnvelope<RequirementsPayload>;
+  requirements: AgentOutputEnvelopeRequirements;
   notesForAgent?: string;
+  workingDirectory?: string;
 }
 
 export async function runPlannerForTicket(
   options: PlannerRunOptions,
-): Promise<AgentOutputEnvelope<PlanPayload>> {
+): Promise<AgentOutputEnvelopePlan> {
   const thread = codex.startThread({
     model: config.codex.model,
     sandboxMode: config.codex.sandboxMode as SandboxMode | undefined,
     approvalPolicy: config.codex.approvalPolicy as ApprovalMode | undefined,
-    workingDirectory: config.codex.workingDirectory ?? process.cwd(),
+    workingDirectory:
+      options.workingDirectory ?? config.codex.workingDirectory ?? process.cwd(),
     skipGitRepoCheck: true,
     networkAccessEnabled: config.codex.networkAccessEnabled,
     webSearchEnabled: config.codex.webSearchEnabled,
+    modelReasoningEffort: "high",
   });
 
   const instructions = buildPlannerPrompt(options);
 
-  const turn = await thread.run(instructions);
+  const turn = await thread.run(instructions, {
+    outputSchema: PlanOutputSchemaStrict,
+  });
 
-  let envelope: AgentOutputEnvelope<PlanPayload>;
+  const raw = turn.finalResponse;
+  let parsed: unknown = raw;
+
+  if (typeof raw === "string") {
+    try {
+      parsed = JSON.parse(raw);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unknown parse error";
+      throw new Error(`Failed to parse planner output as JSON: ${message}`);
+    }
+  }
+
+  let envelope: AgentOutputEnvelopePlan;
   try {
-    envelope =
-      JSON.parse(turn.finalResponse) as AgentOutputEnvelope<PlanPayload>;
+    envelope = AgentOutputEnvelopePlanSchema.parse(parsed);
   } catch (error) {
     const message =
-      error instanceof Error ? error.message : "Unknown parse error";
-    throw new Error(`Failed to parse planner output as JSON: ${message}`);
+      error instanceof Error ? error.message : "Unknown validation error";
+    throw new Error(
+      `Planner agent output failed schema validation: ${message}`,
+    );
   }
 
   if (envelope.payload_type !== "plan") {
