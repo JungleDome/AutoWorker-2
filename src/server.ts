@@ -6,4 +6,3 @@ const app = createApp();
 app.listen(config.port, () => {
   console.log(`AutoWorker API listening on port ${config.port}`);
 });
-

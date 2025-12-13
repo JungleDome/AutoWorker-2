@@ -38,4 +38,3 @@ export const config: AppConfig = {
     webSearchEnabled: parseBoolean(process.env.CODEX_WEBSEARCH_ENABLED),
   },
 };
-

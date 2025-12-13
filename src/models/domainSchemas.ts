@@ -7,71 +7,23 @@ export const AgentRoleSchema = z.enum([
   "QA Specialist (QA Engineer)",
 ]);
 
-export const PayloadTypeSchema = z.enum([
-  "requirements",
-  "plan",
-  "execution_result",
-  "qa_report",
-]);
+export const PayloadTypeSchema = z.enum(["requirements", "plan", "execution_result", "qa_report"]);
 
-export const PlanStepStatusSchema = z.enum([
-  "pending",
-  "in_progress",
-  "done",
-  "blocked",
-  "skipped",
-]);
+export const PlanStepStatusSchema = z.enum(["pending", "in_progress", "done", "blocked", "skipped"]);
 
-export const PlanStepKindSchema = z.enum([
-  "analysis",
-  "design",
-  "implementation",
-  "testing",
-  "documentation",
-  "migration",
-]);
+export const PlanStepKindSchema = z.enum(["analysis", "design", "implementation", "testing", "documentation", "migration"]);
 
-export const RiskLevelSchema = z.enum([
-  "low",
-  "medium",
-  "high",
-  "critical",
-]);
+export const RiskLevelSchema = z.enum(["low", "medium", "high", "critical"]);
 
-export const ComplexityLevelSchema = z.enum([
-  "trivial",
-  "simple",
-  "moderate",
-  "complex",
-  "very_complex",
-]);
+export const ComplexityLevelSchema = z.enum(["trivial", "simple", "moderate", "complex", "very_complex"]);
 
-export const ReviewModeSchema = z.enum([
-  "PLAN_ONLY",
-  "CRITICAL_STEPS",
-  "FULL_CONTROL",
-]);
+export const ReviewModeSchema = z.enum(["PLAN_ONLY", "CRITICAL_STEPS", "FULL_CONTROL"]);
 
-export const RequirementTypeSchema = z.enum([
-  "feature",
-  "bugfix",
-  "chore",
-  "research",
-]);
+export const RequirementTypeSchema = z.enum(["feature", "bugfix", "chore", "research"]);
 
-export const PriorityLevelSchema = z.enum([
-  "low",
-  "medium",
-  "high",
-  "critical",
-]);
+export const PriorityLevelSchema = z.enum(["low", "medium", "high", "critical"]);
 
-export const OriginTypeSchema = z.enum([
-  "user_report",
-  "internal",
-  "monitoring",
-  "other",
-]);
+export const OriginTypeSchema = z.enum(["user_report", "internal", "monitoring", "other"]);
 
 export const PlanSufficiencySchema = z.enum(["yes", "partially", "no"]);
 
@@ -86,11 +38,7 @@ export const PlanIssueCategorySchema = z.enum([
 
 export const QaStatusSchema = z.enum(["pass", "fail", "partial", "blocked"]);
 
-export const QaCheckStatusSchema = z.enum([
-  "pass",
-  "fail",
-  "not_run",
-]);
+export const QaCheckStatusSchema = z.enum(["pass", "fail", "not_run"]);
 
 export const RequirementsSourceSchema = z.object({
   raw_description: z.string(),
@@ -128,21 +76,26 @@ export const RequirementsPayloadSchema = z.object({
   freeform_notes: z.string().optional(),
 });
 
-export const PlanStepSchema: z.ZodType<any> = z.lazy(() =>
-  z.object({
-    id: z.string(),
-    title: z.string(),
-    description: z.string(),
-    kind: PlanStepKindSchema,
-    owner_role: AgentRoleSchema,
-    depends_on: z.array(z.string()),
-    related_acceptance_criteria: z.array(z.string()).optional(),
-    risk_level: RiskLevelSchema,
-    requires_review: z.boolean(),
-    status: PlanStepStatusSchema,
-    children: z.array(PlanStepSchema),
-  }),
-);
+export const PlanStepSchema: z.ZodType<any> = z
+  .lazy(() =>
+    z.object({
+      id: z.string(),
+      title: z.string(),
+      description: z.string(),
+      kind: PlanStepKindSchema,
+      owner_role: AgentRoleSchema,
+      depends_on: z.array(z.string()),
+      related_acceptance_criteria: z.array(z.string()).optional(),
+      risk_level: RiskLevelSchema,
+      requires_review: z.boolean(),
+      status: PlanStepStatusSchema,
+      children: z.array(PlanStepSchema),
+    }),
+  )
+  .meta({
+    id: "PlanStep",
+    type: "object",
+  });
 
 export const PlanPayloadSchema = z.object({
   ticket_id: z.string(),
@@ -229,9 +182,7 @@ export const QaReportPayloadSchema = z.object({
   plan_id: z.string(),
   overall_status: QaStatusSchema,
   summary: z.string(),
-  tested_acceptance_criteria: z
-    .array(QaTestedAcceptanceCriterionSchema)
-    .optional(),
+  tested_acceptance_criteria: z.array(QaTestedAcceptanceCriterionSchema).optional(),
   checks: z.array(QaCheckSchema).optional(),
   issues_found: z.array(QaIssueSchema).optional(),
   recommendation: z.string(),
@@ -247,25 +198,21 @@ const AgentOutputEnvelopeBaseSchemaInternal = z.object({
   payload_type: PayloadTypeSchema,
 });
 
-export const AgentOutputEnvelopeRequirementsSchema =
-  AgentOutputEnvelopeBaseSchemaInternal.extend({
-    payload: RequirementsPayloadSchema,
-  });
+export const AgentOutputEnvelopeRequirementsSchema = AgentOutputEnvelopeBaseSchemaInternal.extend({
+  payload: RequirementsPayloadSchema,
+});
 
-export const AgentOutputEnvelopePlanSchema =
-  AgentOutputEnvelopeBaseSchemaInternal.extend({
-    payload: PlanPayloadSchema,
-  });
+export const AgentOutputEnvelopePlanSchema = AgentOutputEnvelopeBaseSchemaInternal.extend({
+  payload: PlanPayloadSchema,
+});
 
-export const AgentOutputEnvelopeExecutionResultSchema =
-  AgentOutputEnvelopeBaseSchemaInternal.extend({
-    payload: ExecutionResultPayloadSchema,
-  });
+export const AgentOutputEnvelopeExecutionResultSchema = AgentOutputEnvelopeBaseSchemaInternal.extend({
+  payload: ExecutionResultPayloadSchema,
+});
 
-export const AgentOutputEnvelopeQaReportSchema =
-  AgentOutputEnvelopeBaseSchemaInternal.extend({
-    payload: QaReportPayloadSchema,
-  });
+export const AgentOutputEnvelopeQaReportSchema = AgentOutputEnvelopeBaseSchemaInternal.extend({
+  payload: QaReportPayloadSchema,
+});
 
 export const TicketRecordSchema = z.object({
   ticketId: z.string(),
@@ -289,4 +236,3 @@ export const ErrorResponseSchema = z.object({
 });
 
 export const AgentOutputEnvelopeBaseSchema = AgentOutputEnvelopeBaseSchemaInternal;
-
