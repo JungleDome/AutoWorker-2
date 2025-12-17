@@ -44,11 +44,12 @@ interface TicketState {
   loading: boolean;
   error?: string;
   loadTickets: () => Promise<void>;
-  selectTicket: (ticketId: string) => Promise<void>;
-  createTicket: (ticketId: string) => Promise<void>;
+  selectTicket: (projectId: string, ticketId: string) => Promise<void>;
+  createTicket: (projectId: string) => Promise<void>;
   runRequirements: (
+    projectId: string,
     ticketId: string,
-    payload: { description: string; notes?: string },
+    payload: { description?: string; notes?: string },
   ) => Promise<void>;
 }
 
@@ -76,11 +77,11 @@ export const useTicketStore = create<TicketState>((set, get) => ({
       set({ loading: false });
     }
   },
-  async selectTicket(ticketId) {
+  async selectTicket(projectId, ticketId) {
     set({ loading: true, error: undefined });
     try {
       const data = await apiJson<{ ticket: TicketRecord }>(
-        `/api/tickets/${encodeURIComponent(ticketId)}`,
+        `/api/projects/${encodeURIComponent(projectId)}/tickets/${encodeURIComponent(ticketId)}`,
       );
       set({ selectedTicket: data.ticket });
     } catch (error) {
@@ -90,15 +91,15 @@ export const useTicketStore = create<TicketState>((set, get) => ({
       set({ loading: false });
     }
   },
-  async createTicket(ticketId) {
+  async createTicket(projectId) {
     set({ loading: true, error: undefined });
     try {
       const data = await apiJson<{ ticket: TicketRecord }>(
-        `/api/tickets/${encodeURIComponent(ticketId)}`,
+        `/api/projects/${encodeURIComponent(projectId)}/tickets`,
         { method: "POST" },
       );
       set((state) => ({
-        tickets: [data.ticket, ...state.tickets.filter((t) => t.ticketId !== ticketId)],
+        tickets: [data.ticket, ...state.tickets.filter((t) => t.ticketId !== data.ticket.ticketId)],
         selectedTicket: data.ticket,
       }));
     } catch (error) {
@@ -108,17 +109,22 @@ export const useTicketStore = create<TicketState>((set, get) => ({
       set({ loading: false });
     }
   },
-  async runRequirements(ticketId, payload) {
+  async runRequirements(projectId, ticketId, payload) {
     set({ loading: true, error: undefined });
     try {
+      const body: Record<string, unknown> = {};
+      if (payload.description && payload.description.trim().length > 0) {
+        body.raw_description = payload.description;
+      }
+      if (payload.notes && payload.notes.trim().length > 0) {
+        body.notes_for_agent = payload.notes;
+      }
+
       const data = await apiJson<{ ticket: TicketRecord }>(
         `/api/tickets/${encodeURIComponent(ticketId)}/requirements`,
         {
           method: "POST",
-          body: JSON.stringify({
-            raw_description: payload.description,
-            notes_for_agent: payload.notes,
-          }),
+          body: JSON.stringify(body),
         },
       );
       set((state) => ({

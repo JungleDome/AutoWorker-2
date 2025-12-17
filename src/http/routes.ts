@@ -2,8 +2,14 @@ import type { Express, Request, Response } from "express";
 import { config } from "../config.js";
 import {
   appendTicketFeedback,
+  answerAsk,
+  createAsk,
+  createTicket,
+  getAsk,
   getTicket,
+  getTicketForProject,
   getProject,
+  listAsks,
   listTickets,
   listProjects,
   recordExecutionResult,
@@ -27,6 +33,7 @@ import type {
 import {
   registry,
   z,
+  AskRecordSchema,
   ProjectRecordSchema,
   TicketRecordSchema,
   AgentOutputEnvelopeRequirementsSchema,
@@ -38,7 +45,7 @@ import {
 } from "./openapiRegistry.js";
 
 const RequirementsBodySchema = z.object({
-  raw_description: z.string(),
+  raw_description: z.string().optional(),
   notes_for_agent: z.string().optional(),
 });
 
@@ -66,6 +73,14 @@ const TicketUpsertBodySchema = z.object({
   projectId: z.string().optional(),
   projectName: z.string().optional(),
   workingDirectory: z.string().optional(),
+});
+
+const AskCreateBodySchema = z.object({
+  question: z.string(),
+});
+
+const AskAnswerBodySchema = z.object({
+  answer: z.string(),
 });
 
 export function registerRoutes(app: Express) {
@@ -215,6 +230,283 @@ export function registerRoutes(app: Express) {
     },
   });
 
+  // Create ticket (system-generated id) in project
+  app.post("/api/projects/:projectId/tickets", (req: Request, res: Response) => {
+    const projectId = req.params.projectId;
+    try {
+      const ticket = createTicket(projectId);
+      res.status(201).json({ ticket });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to create ticket";
+      res.status(400).json({ error: message });
+    }
+  });
+
+  registry.registerPath({
+    method: "post",
+    path: "/api/projects/{projectId}/tickets",
+    tags: ["Tickets"],
+    summary: "Create a ticket with a system-generated ID inside a project",
+    request: {
+      params: z.object({
+        projectId: z.string(),
+      }),
+    },
+    responses: {
+      201: {
+        description: "Ticket created",
+        content: {
+          "application/json": {
+            schema: z.object({
+              ticket: TicketRecordSchema,
+            }),
+          },
+        },
+      },
+      400: {
+        description: "Invalid request",
+        content: {
+          "application/json": {
+            schema: ErrorResponseSchema,
+          },
+        },
+      },
+    },
+  });
+
+  // Project-scoped ticket read (avoids cross-project id ambiguity)
+  app.get(
+    "/api/projects/:projectId/tickets/:ticketId",
+    (req: Request, res: Response) => {
+      const { projectId, ticketId } = req.params;
+      try {
+        const ticket = getTicketForProject(projectId, ticketId);
+        if (!ticket) {
+          res.status(404).json({ error: "Ticket not found" });
+          return;
+        }
+        res.json({ ticket });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to load ticket";
+        res.status(400).json({ error: message });
+      }
+    },
+  );
+
+  registry.registerPath({
+    method: "get",
+    path: "/api/projects/{projectId}/tickets/{ticketId}",
+    tags: ["Tickets"],
+    summary: "Get a ticket by ID within a project",
+    request: {
+      params: z.object({
+        projectId: z.string(),
+        ticketId: z.string(),
+      }),
+    },
+    responses: {
+      200: {
+        description: "Ticket details",
+        content: {
+          "application/json": {
+            schema: z.object({
+              ticket: TicketRecordSchema,
+            }),
+          },
+        },
+      },
+      404: {
+        description: "Ticket not found",
+        content: {
+          "application/json": {
+            schema: ErrorResponseSchema,
+          },
+        },
+      },
+    },
+  });
+
+  // Project asks
+  app.get("/api/projects/:projectId/asks", (req: Request, res: Response) => {
+    const projectId = req.params.projectId;
+    try {
+      res.json({ asks: listAsks(projectId) });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to list asks";
+      res.status(400).json({ error: message });
+    }
+  });
+
+  registry.registerPath({
+    method: "get",
+    path: "/api/projects/{projectId}/asks",
+    tags: ["Asks"],
+    summary: "List asks for a project",
+    request: {
+      params: z.object({ projectId: z.string() }),
+    },
+    responses: {
+      200: {
+        description: "Asks list",
+        content: {
+          "application/json": {
+            schema: z.object({
+              asks: z.array(AskRecordSchema),
+            }),
+          },
+        },
+      },
+    },
+  });
+
+  app.post("/api/projects/:projectId/asks", (req: Request, res: Response) => {
+    const projectId = req.params.projectId;
+    const parseResult = AskCreateBodySchema.safeParse(req.body ?? {});
+    if (!parseResult.success) {
+      res.status(400).json({ error: "Invalid request body" });
+      return;
+    }
+
+    try {
+      const ask = createAsk(projectId, parseResult.data.question);
+      res.status(201).json({ ask });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to create ask";
+      res.status(400).json({ error: message });
+    }
+  });
+
+  registry.registerPath({
+    method: "post",
+    path: "/api/projects/{projectId}/asks",
+    tags: ["Asks"],
+    summary: "Create an ask (question/note) for a project",
+    request: {
+      params: z.object({ projectId: z.string() }),
+      body: {
+        content: {
+          "application/json": {
+            schema: AskCreateBodySchema,
+          },
+        },
+      },
+    },
+    responses: {
+      201: {
+        description: "Ask created",
+        content: {
+          "application/json": {
+            schema: z.object({
+              ask: AskRecordSchema,
+            }),
+          },
+        },
+      },
+      400: {
+        description: "Invalid request body",
+        content: {
+          "application/json": {
+            schema: ErrorResponseSchema,
+          },
+        },
+      },
+    },
+  });
+
+  app.get("/api/projects/:projectId/asks/:askId", (req: Request, res: Response) => {
+    const { projectId, askId } = req.params;
+    try {
+      const ask = getAsk(projectId, askId);
+      if (!ask) {
+        res.status(404).json({ error: "Ask not found" });
+        return;
+      }
+      res.json({ ask });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to load ask";
+      res.status(400).json({ error: message });
+    }
+  });
+
+  registry.registerPath({
+    method: "get",
+    path: "/api/projects/{projectId}/asks/{askId}",
+    tags: ["Asks"],
+    summary: "Get an ask by ID within a project",
+    request: {
+      params: z.object({ projectId: z.string(), askId: z.string() }),
+    },
+    responses: {
+      200: {
+        description: "Ask details",
+        content: {
+          "application/json": {
+            schema: z.object({
+              ask: AskRecordSchema,
+            }),
+          },
+        },
+      },
+      404: {
+        description: "Ask not found",
+        content: {
+          "application/json": {
+            schema: ErrorResponseSchema,
+          },
+        },
+      },
+    },
+  });
+
+  app.post(
+    "/api/projects/:projectId/asks/:askId/answer",
+    (req: Request, res: Response) => {
+      const { projectId, askId } = req.params;
+      const parseResult = AskAnswerBodySchema.safeParse(req.body ?? {});
+      if (!parseResult.success) {
+        res.status(400).json({ error: "Invalid request body" });
+        return;
+      }
+
+      try {
+        const ask = answerAsk(projectId, askId, parseResult.data.answer);
+        res.status(201).json({ ask });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to answer ask";
+        res.status(400).json({ error: message });
+      }
+    },
+  );
+
+  registry.registerPath({
+    method: "post",
+    path: "/api/projects/{projectId}/asks/{askId}/answer",
+    tags: ["Asks"],
+    summary: "Store an answer for an ask",
+    request: {
+      params: z.object({ projectId: z.string(), askId: z.string() }),
+      body: {
+        content: {
+          "application/json": {
+            schema: AskAnswerBodySchema,
+          },
+        },
+      },
+    },
+    responses: {
+      201: {
+        description: "Ask updated",
+        content: {
+          "application/json": {
+            schema: z.object({
+              ask: AskRecordSchema,
+            }),
+          },
+        },
+      },
+    },
+  });
+
   // Tickets listing
   app.get("/api/tickets", (_req: Request, res: Response) => {
     res.json({ tickets: listTickets() });
@@ -348,25 +640,41 @@ export function registerRoutes(app: Express) {
 
       const { raw_description, notes_for_agent } = parseResult.data;
 
-      const ticket = upsertTicket(ticketId);
+      const ticketBeforeFeedback = upsertTicket(ticketId);
       const project =
-        getProject(ticket.projectId) ??
-        upsertProject(ticket.projectId, {
-          name: ticket.projectId,
+        getProject(ticketBeforeFeedback.projectId) ??
+        upsertProject(ticketBeforeFeedback.projectId, {
+          name: ticketBeforeFeedback.projectId,
           workingDirectory: config.codex.workingDirectory ?? process.cwd(),
         });
-      if (notes_for_agent && notes_for_agent.trim()) {
-        appendTicketFeedback(ticketId, "requirements", notes_for_agent.trim());
+
+      const ticket =
+        notes_for_agent && notes_for_agent.trim()
+          ? appendTicketFeedback(ticketId, "requirements", notes_for_agent.trim())
+          : ticketBeforeFeedback;
+
+      const effectiveRawDescription =
+        raw_description && raw_description.trim().length > 0
+          ? raw_description
+          : ticket.latestRequirements?.payload.source.raw_description;
+
+      if (!effectiveRawDescription || effectiveRawDescription.trim().length === 0) {
+        res.status(400).json({
+          error:
+            "raw_description is required for the first requirements run (or provide it again to override)",
+        });
+        return;
       }
 
       try {
         const envelope = await runRequirementsForTicket({
           ticketId,
-          rawTicketDescription: raw_description,
-          notesForAgent: notes_for_agent ?? undefined,
+          rawTicketDescription: effectiveRawDescription,
+          previousRequirements: ticket.latestRequirements,
+          requirementsFeedbackHistory: ticket.feedback.requirements,
           workingDirectory: project.workingDirectory,
         });
-        res.json({ requirements: envelope });
+        res.json({ ticket: getTicket(ticketId) ?? ticket, requirements: envelope });
       } catch (error) {
         const message =
           error instanceof Error
@@ -381,7 +689,8 @@ export function registerRoutes(app: Express) {
     method: "post",
     path: "/api/tickets/{ticketId}/requirements",
     tags: ["Requirements"],
-    summary: "Run requirements agent for a ticket",
+    summary:
+      "Run requirements agent for a ticket (uses prior requirements + stored feedback when present)",
     request: {
       params: z.object({ ticketId: z.string() }),
       body: {
@@ -398,6 +707,7 @@ export function registerRoutes(app: Express) {
         content: {
           "application/json": {
             schema: z.object({
+              ticket: TicketRecordSchema,
               requirements: AgentOutputEnvelopeRequirementsSchema,
             }),
           },

@@ -4,6 +4,7 @@ import type {
   AgentOutputEnvelopePlan,
   AgentOutputEnvelopeQaReport,
   AgentOutputEnvelopeRequirements,
+  AskRecord,
   ProjectRecord,
   TicketRecord,
 } from "../models/domainTypes.js";
@@ -20,6 +21,9 @@ function nowIso(): string {
 
 export function createInMemoryAdapter(): StorageAdapter {
   const tickets = new Map<string, TicketRecord>();
+  const ticketsByProject = new Map<string, Map<string, TicketRecord>>();
+  const asksByProject = new Map<string, Map<string, AskRecord>>();
+  let sequenceState: { ticket: number; ask: number; year: number } | null = null;
   const runs = new Map<string, AgentRunRecord>();
   const projects = new Map<string, ProjectRecord>();
 
@@ -82,10 +86,12 @@ export function createInMemoryAdapter(): StorageAdapter {
     }
 
     const created: TicketRecord = {
+      schemaVersion: 2,
       ticketId,
       projectId,
       createdAt: nowIso(),
       updatedAt: nowIso(),
+      status: "open",
       latestRequirements: null,
       latestPlan: null,
       planHistory: [],
@@ -99,6 +105,10 @@ export function createInMemoryAdapter(): StorageAdapter {
       },
     };
     tickets.set(ticketId, created);
+    if (!ticketsByProject.has(projectId)) {
+      ticketsByProject.set(projectId, new Map());
+    }
+    ticketsByProject.get(projectId)!.set(ticketId, created);
     return created;
   }
 
@@ -111,6 +121,18 @@ export function createInMemoryAdapter(): StorageAdapter {
     ticket.feedback[kind].push(note);
     ticket.updatedAt = nowIso();
     return ticket;
+  }
+
+  function nextSequence(): { year: number; ticket: number; ask: number } {
+    const year = new Date().getUTCFullYear();
+    if (!sequenceState || sequenceState.year !== year) {
+      sequenceState = { year, ticket: 1, ask: 1 };
+    }
+    return sequenceState;
+  }
+
+  function formatId(prefix: "T" | "A", year: number, seq: number): string {
+    return `${prefix}-${year}-${String(seq).padStart(4, "0")}`;
   }
 
   return {
@@ -149,12 +171,22 @@ export function createInMemoryAdapter(): StorageAdapter {
       return created;
     },
 
+    createTicket(projectId: string) {
+      ensureDefaultProject();
+      const seq = nextSequence();
+      const ticketId = formatId("T", seq.year, seq.ticket++);
+      return upsertTicket(ticketId, { projectId });
+    },
     upsertTicket,
     listTickets() {
       return Array.from(tickets.values());
     },
     getTicket(ticketId: string) {
       return tickets.get(ticketId);
+    },
+    getTicketForProject(projectId: string, ticketId: string) {
+      const projectTickets = ticketsByProject.get(projectId);
+      return projectTickets ? projectTickets.get(ticketId) : undefined;
     },
     appendTicketFeedback,
 
@@ -186,6 +218,44 @@ export function createInMemoryAdapter(): StorageAdapter {
       ticket.updatedAt = nowIso();
       persistRun(envelope);
       return ticket;
+    },
+
+    createAsk(projectId: string, question: string) {
+      ensureDefaultProject();
+      const seq = nextSequence();
+      const askId = formatId("A", seq.year, seq.ask++);
+      const created: AskRecord = {
+        schemaVersion: 1,
+        askId,
+        projectId,
+        createdAt: nowIso(),
+        updatedAt: nowIso(),
+        question,
+        answer: null,
+        relatedTicketIds: [],
+      };
+      if (!asksByProject.has(projectId)) {
+        asksByProject.set(projectId, new Map());
+      }
+      asksByProject.get(projectId)!.set(askId, created);
+      return created;
+    },
+    listAsks(projectId: string) {
+      ensureDefaultProject();
+      return Array.from(asksByProject.get(projectId)?.values() ?? []);
+    },
+    getAsk(projectId: string, askId: string) {
+      ensureDefaultProject();
+      return asksByProject.get(projectId)?.get(askId);
+    },
+    answerAsk(projectId: string, askId: string, answer: string) {
+      const ask = asksByProject.get(projectId)?.get(askId);
+      if (!ask) {
+        throw new Error(`Ask not found: ${projectId}/${askId}`);
+      }
+      ask.answer = answer;
+      ask.updatedAt = nowIso();
+      return ask;
     },
 
     listRuns() {

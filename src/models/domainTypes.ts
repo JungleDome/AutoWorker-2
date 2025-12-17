@@ -35,7 +35,9 @@ import {
   RequirementsSourceSchema,
   ReviewModeSchema,
   RiskLevelSchema,
+  TicketStatusSchema,
   TicketRecordSchema,
+  AskRecordSchema,
 } from "./domainSchemas.js";
 
 export type AgentRole = z.infer<typeof AgentRoleSchema>;
@@ -104,7 +106,11 @@ export type QaReportPayload = z.infer<typeof QaReportPayloadSchema>;
 
 export type TicketRecord = z.infer<typeof TicketRecordSchema>;
 
+export type TicketStatus = z.infer<typeof TicketStatusSchema>;
+
 export type ProjectRecord = z.infer<typeof ProjectRecordSchema>;
+
+export type AskRecord = z.infer<typeof AskRecordSchema>;
 
 export type AgentOutputEnvelopeBase = z.infer<
   typeof AgentOutputEnvelopeBaseSchema

@@ -6,6 +6,7 @@ import type {
   AgentOutputEnvelopePlan,
   AgentOutputEnvelopeQaReport,
   AgentOutputEnvelopeRequirements,
+  AskRecord,
   ProjectRecord,
   TicketRecord,
 } from "../models/domainTypes.js";
@@ -69,6 +70,10 @@ function writeJsonFile(filePath: string, value: unknown) {
   writeFileAtomic(filePath, `${JSON.stringify(value, null, 2)}\n`);
 }
 
+function formatId(prefix: "T" | "A", year: number, seq: number): string {
+  return `${prefix}-${year}-${String(seq).padStart(4, "0")}`;
+}
+
 function listJsonFiles(dirPath: string): string[] {
   try {
     return fs
@@ -92,10 +97,13 @@ export function createFileAdapter(options: FileAdapterOptions): StorageAdapter {
   const rootDir = options.rootDir;
   const projectsDir = path.join(rootDir, "projects");
   const ticketsDir = path.join(rootDir, "tickets");
+  const asksDir = path.join(rootDir, "asks");
   const runsDir = path.join(rootDir, "runs");
+  const seqFilePath = path.join(rootDir, "seq.json");
 
   fs.mkdirSync(projectsDir, { recursive: true });
   fs.mkdirSync(ticketsDir, { recursive: true });
+  fs.mkdirSync(asksDir, { recursive: true });
   fs.mkdirSync(runsDir, { recursive: true });
 
   function projectPath(projectId: string): string {
@@ -123,6 +131,35 @@ export function createFileAdapter(options: FileAdapterOptions): StorageAdapter {
     };
     writeJsonFile(projectPath(created.projectId), created);
     return created;
+  }
+
+  function readSequence(): { year: number; ticket: number; ask: number } {
+    const year = new Date().getUTCFullYear();
+    const existing = readJsonFile<{ year: number; ticket: number; ask: number }>(
+      seqFilePath,
+    );
+    if (!existing || existing.year !== year) {
+      const fresh = { year, ticket: 1, ask: 1 };
+      writeJsonFile(seqFilePath, fresh);
+      return fresh;
+    }
+    return existing;
+  }
+
+  function nextId(kind: "ticket" | "ask"): string {
+    const state = readSequence();
+    const id =
+      kind === "ticket"
+        ? formatId("T", state.year, state.ticket)
+        : formatId("A", state.year, state.ask);
+
+    if (kind === "ticket") {
+      state.ticket += 1;
+    } else {
+      state.ask += 1;
+    }
+    writeJsonFile(seqFilePath, state);
+    return id;
   }
 
   function upsertTicket(
@@ -157,10 +194,12 @@ export function createFileAdapter(options: FileAdapterOptions): StorageAdapter {
     }
 
     const created: TicketRecord = {
+      schemaVersion: 2,
       ticketId,
       projectId,
       createdAt: nowIso(),
       updatedAt: nowIso(),
+      status: "open",
       latestRequirements: null,
       latestPlan: null,
       planHistory: [],
@@ -175,6 +214,14 @@ export function createFileAdapter(options: FileAdapterOptions): StorageAdapter {
     };
     writeJsonFile(filePath, created);
     return created;
+  }
+
+  function askProjectDir(projectId: string): string {
+    return path.join(asksDir, encodeId(projectId));
+  }
+
+  function askPath(projectId: string, askId: string): string {
+    return path.join(askProjectDir(projectId), `${encodeId(askId)}.json`);
   }
 
   function appendTicketFeedback(
@@ -253,6 +300,11 @@ export function createFileAdapter(options: FileAdapterOptions): StorageAdapter {
       return created;
     },
 
+    createTicket(projectId: string) {
+      ensureDefaultProject();
+      const ticketId = nextId("ticket");
+      return upsertTicket(ticketId, { projectId });
+    },
     upsertTicket,
     listTickets() {
       return listJsonFiles(ticketsDir)
@@ -268,6 +320,11 @@ export function createFileAdapter(options: FileAdapterOptions): StorageAdapter {
     },
     getTicket(ticketId: string) {
       return readJsonFile<TicketRecord>(ticketPath(ticketId));
+    },
+    getTicketForProject(projectId: string, ticketId: string) {
+      const ticket = readJsonFile<TicketRecord>(ticketPath(ticketId));
+      if (!ticket) return undefined;
+      return ticket.projectId === projectId ? ticket : undefined;
     },
     appendTicketFeedback,
 
@@ -303,6 +360,51 @@ export function createFileAdapter(options: FileAdapterOptions): StorageAdapter {
       writeJsonFile(ticketPath(ticket.ticketId), ticket);
       persistRun(envelope);
       return ticket;
+    },
+
+    createAsk(projectId: string, question: string) {
+      ensureDefaultProject();
+      const askId = nextId("ask");
+      const created: AskRecord = {
+        schemaVersion: 1,
+        askId,
+        projectId,
+        createdAt: nowIso(),
+        updatedAt: nowIso(),
+        question,
+        answer: null,
+        relatedTicketIds: [],
+      };
+      writeJsonFile(askPath(projectId, askId), created);
+      return created;
+    },
+    listAsks(projectId: string) {
+      ensureDefaultProject();
+      return listJsonFiles(askProjectDir(projectId))
+        .map((filePath) => {
+          try {
+            return readJsonFile<AskRecord>(filePath);
+          } catch (error) {
+            console.warn(`Failed to read ask file: ${filePath}`, error);
+            return undefined;
+          }
+        })
+        .filter((value): value is AskRecord => value != null);
+    },
+    getAsk(projectId: string, askId: string) {
+      ensureDefaultProject();
+      return readJsonFile<AskRecord>(askPath(projectId, askId));
+    },
+    answerAsk(projectId: string, askId: string, answer: string) {
+      ensureDefaultProject();
+      const ask = readJsonFile<AskRecord>(askPath(projectId, askId));
+      if (!ask) {
+        throw new Error(`Ask not found: ${projectId}/${askId}`);
+      }
+      ask.answer = answer;
+      ask.updatedAt = nowIso();
+      writeJsonFile(askPath(projectId, askId), ask);
+      return ask;
     },
 
     listRuns() {

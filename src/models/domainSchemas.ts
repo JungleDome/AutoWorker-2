@@ -242,6 +242,14 @@ export const QaReportPayloadSchema = z.object({
   freeform_notes: z.string().nullable(),
 });
 
+export const TicketStatusSchema = z.enum([
+  "open",
+  "in_progress",
+  "blocked",
+  "done",
+  "archived",
+]);
+
 const AgentOutputEnvelopeBaseSchemaInternal = z.object({
   agent_role: AgentRoleSchema,
   ticket_id: z.string(),
@@ -287,10 +295,12 @@ export const ProjectRecordSchema = z.object({
 });
 
 export const TicketRecordSchema = z.object({
+  schemaVersion: z.number().int().optional(),
   ticketId: z.string(),
   projectId: z.string(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  status: TicketStatusSchema.optional(),
   latestRequirements: AgentOutputEnvelopeRequirementsSchema.nullable(),
   latestPlan: AgentOutputEnvelopePlanSchema.nullable(),
   planHistory: z.array(AgentOutputEnvelopePlanSchema),
@@ -302,6 +312,17 @@ export const TicketRecordSchema = z.object({
     execution: z.array(z.string()),
     qa: z.array(z.string()),
   }),
+});
+
+export const AskRecordSchema = z.object({
+  schemaVersion: z.number().int(),
+  askId: z.string(),
+  projectId: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  question: z.string(),
+  answer: z.string().nullable(),
+  relatedTicketIds: z.array(z.string()),
 });
 
 export const ErrorResponseSchema = z.object({

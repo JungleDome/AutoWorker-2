@@ -31,7 +31,7 @@ export async function runImplementerForTicket(
 ): Promise<AgentOutputEnvelopeExecutionResult> {
   const thread = codex.startThread({
     model: config.codex.model,
-    sandboxMode: config.codex.sandboxMode as SandboxMode | undefined,
+    sandboxMode: "read-only",
     approvalPolicy: config.codex.approvalPolicy as ApprovalMode | undefined,
     workingDirectory:
       options.workingDirectory ?? config.codex.workingDirectory ?? process.cwd(),
@@ -103,6 +103,7 @@ function buildImplementerPrompt(options: ImplementerRunOptions): string {
   const header = [
     "You are the Implementer (Software Engineer) agent in a multi-stage delivery pipeline.",
     "You receive the approved PlanPayload for a ticket and must respond with a JSON object that matches the AgentOutputEnvelope and ExecutionResultPayload specification.",
+    "Project context lives in the working directory under ./.autoworker/; you may search/read it as needed.",
     "",
     "CRITICAL:",
     "- Respond with JSON only, no surrounding text.",

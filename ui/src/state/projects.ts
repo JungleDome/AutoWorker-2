@@ -27,9 +27,11 @@ async function apiJson<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 interface ProjectState {
+  projects: ProjectRecord[];
   projectsById: Record<string, ProjectRecord>;
   loading: boolean;
   error?: string;
+  loadProjects: () => Promise<void>;
   loadProject: (projectId: string) => Promise<ProjectRecord | undefined>;
   upsertProject: (
     projectId: string,
@@ -38,9 +40,31 @@ interface ProjectState {
 }
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
+  projects: [],
   projectsById: {},
   loading: false,
   error: undefined,
+  async loadProjects() {
+    set({ loading: true, error: undefined });
+    try {
+      const data = await apiJson<{ projects: ProjectRecord[] }>("/api/projects");
+      set({
+        projects: data.projects,
+        projectsById: data.projects.reduce<Record<string, ProjectRecord>>(
+          (acc, project) => {
+            acc[project.projectId] = project;
+            return acc;
+          },
+          {},
+        ),
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      set({ error: message });
+    } finally {
+      set({ loading: false });
+    }
+  },
   async loadProject(projectId) {
     set({ loading: true, error: undefined });
     try {
@@ -49,6 +73,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       );
       set((state) => ({
         projectsById: { ...state.projectsById, [projectId]: data.project },
+        projects: [
+          data.project,
+          ...state.projects.filter((project) => project.projectId !== projectId),
+        ],
       }));
       return data.project;
     } catch (error) {
@@ -71,6 +99,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       );
       set((state) => ({
         projectsById: { ...state.projectsById, [projectId]: data.project },
+        projects: [
+          data.project,
+          ...state.projects.filter((project) => project.projectId !== projectId),
+        ],
       }));
       return data.project;
     } catch (error) {
@@ -82,4 +114,3 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     }
   },
 }));
-

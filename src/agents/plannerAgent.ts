@@ -28,7 +28,7 @@ export async function runPlannerForTicket(
 ): Promise<AgentOutputEnvelopePlan> {
   const thread = codex.startThread({
     model: config.codex.model,
-    sandboxMode: config.codex.sandboxMode as SandboxMode | undefined,
+    sandboxMode: "read-only",
     approvalPolicy: config.codex.approvalPolicy as ApprovalMode | undefined,
     workingDirectory:
       options.workingDirectory ?? config.codex.workingDirectory ?? process.cwd(),
@@ -156,6 +156,7 @@ function buildPlannerPrompt(options: PlannerRunOptions): string {
   const header = [
     "You are the Planner (Tech Lead) agent in a multi-stage delivery pipeline.",
     "You receive structured requirements for a single ticket and must respond with a JSON object that matches the AgentOutputEnvelope and PlanPayload specification.",
+    "Project context lives in the working directory under ./.autoworker/; you may search/read it as needed.",
     "",
     "CRITICAL:",
     "- Respond with JSON only, no surrounding text.",
